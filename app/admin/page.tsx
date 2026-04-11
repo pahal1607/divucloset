@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createClient } from "../components/supabaseBrowser";
 import {
   addProduct,
   deleteProduct,
@@ -14,6 +15,8 @@ import {
   updateOrderFields,
   OrderStatus,
 } from "../components/orderDb";
+
+const ADMIN_EMAIL = "keertidwivedi2008@gmail.com"; // replace with your real admin email
 
 type Product = {
   id?: number;
@@ -58,6 +61,9 @@ const statusOptions: OrderStatus[] = [
 ];
 
 export default function AdminPage() {
+  const supabase = createClient();
+
+  const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [loading, setLoading] = useState(false);
@@ -74,6 +80,23 @@ export default function AdminPage() {
     L: "",
     XL: "",
   });
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user || user.email !== ADMIN_EMAIL) {
+        window.location.href = "/";
+        return;
+      }
+
+      setIsCheckingAdmin(false);
+    };
+
+    checkAdmin();
+  }, [supabase]);
 
   const loadProducts = async () => {
     const data = await getProducts();
@@ -105,8 +128,10 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    loadAll();
-  }, []);
+    if (!isCheckingAdmin) {
+      loadAll();
+    }
+  }, [isCheckingAdmin]);
 
   const handleAddProduct = async () => {
     if (!name.trim() || !category.trim() || !price.trim()) {
@@ -261,6 +286,16 @@ export default function AdminPage() {
       setLoading(false);
     }
   };
+
+  if (isCheckingAdmin) {
+    return (
+      <div className="min-h-screen bg-black px-6 py-10 text-white">
+        <div className="mx-auto max-w-7xl">
+          <p className="text-zinc-400">Checking admin access...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black px-6 py-10 text-white">

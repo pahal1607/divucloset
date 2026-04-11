@@ -5,11 +5,15 @@ import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import { createClient } from "./supabaseBrowser";
 
+const ADMIN_EMAIL = "keertidwivedi2008@gmail.com"; // replace with your real admin email
+
 export default function SiteHeader() {
   const supabase = createClient();
+
   const [cartCount, setCartCount] = useState(0);
   const [search, setSearch] = useState("");
   const [loggedIn, setLoggedIn] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const updateCart = () => {
@@ -28,6 +32,7 @@ export default function SiteHeader() {
       } = await supabase.auth.getUser();
 
       setLoggedIn(!!user);
+      setIsAdmin(!!user && user.email === ADMIN_EMAIL);
     };
 
     updateCart();
@@ -74,11 +79,27 @@ export default function SiteHeader() {
         </div>
 
         <nav className="hidden items-center gap-7 lg:flex">
-          <Link href="/women" className="text-zinc-300 hover:text-white">Women</Link>
-          <Link href="/men" className="text-zinc-300 hover:text-white">Men</Link>
-          <Link href="/shoes" className="text-zinc-300 hover:text-white">Shoes</Link>
-          <Link href="/beauty-products" className="text-zinc-300 hover:text-white">Beauty</Link>
-          <Link href="/jewelry" className="text-zinc-300 hover:text-white">Jewelry</Link>
+          <Link href="/women" className="text-zinc-300 hover:text-white">
+            Women
+          </Link>
+          <Link href="/men" className="text-zinc-300 hover:text-white">
+            Men
+          </Link>
+          <Link href="/shoes" className="text-zinc-300 hover:text-white">
+            Shoes
+          </Link>
+          <Link href="/beauty-products" className="text-zinc-300 hover:text-white">
+            Beauty
+          </Link>
+          <Link href="/jewelry" className="text-zinc-300 hover:text-white">
+            Jewelry
+          </Link>
+
+          {isAdmin && (
+            <Link href="/admin" className="font-semibold text-white hover:text-zinc-300">
+              Admin
+            </Link>
+          )}
         </nav>
 
         <div className="flex items-center gap-4">
@@ -117,8 +138,10 @@ export default function SiteHeader() {
           <Link href="/shoes">Shoes</Link>
           <Link href="/beauty-products">Beauty</Link>
           <Link href="/jewelry">Jewelry</Link>
+
+          {isAdmin && <Link href="/admin">Admin</Link>}
         </nav>
       </div>
     </header>
   );
-}
+} 
