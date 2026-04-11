@@ -30,7 +30,7 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  const protectedRoutes = ["/account", "/orders", "/addresses", "/checkout", "/admin"];
+  const protectedRoutes = ["/account", "/orders", "/addresses", "/checkout"];
   const isProtected = protectedRoutes.some((route) => pathname.startsWith(route));
 
   if (isProtected && !user) {
@@ -39,24 +39,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (pathname.startsWith("/admin")) {
-    const adminEmail = process.env.ADMIN_EMAIL;
-    if (!user || user.email !== adminEmail) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/";
-      return NextResponse.redirect(url);
-    }
-  }
-
   return response;
 }
 
 export const config = {
-  matcher: [
-    "/account/:path*",
-    "/orders/:path*",
-    "/addresses/:path*",
-    "/checkout/:path*",
-    "/admin/:path*",
-  ],
+  matcher: ["/account/:path*", "/orders/:path*", "/addresses/:path*", "/checkout/:path*"],
 };
