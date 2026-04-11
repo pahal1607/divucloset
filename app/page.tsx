@@ -36,13 +36,6 @@ const testimonials = [
   },
 ];
 
-const stats = [
-  { value: "25,000+", label: "Clothes Sold" },
-  { value: "12,500+", label: "Happy Customers" },
-  { value: "250+", label: "Products Listed" },
-  { value: "180+", label: "Cities Delivered" },
-];
-
 const features = [
   { icon: Truck, title: "Fast Delivery", text: "Quick shipping across cities." },
   { icon: ShieldCheck, title: "Secure Shopping", text: "Trusted checkout experience." },
@@ -61,27 +54,27 @@ function HomeProductCard({ product }: { product: any }) {
             <img
               src={product.image_url}
               alt={product.name}
-              className="h-64 w-full cursor-pointer object-cover transition duration-500 group-hover:scale-105"
+              className="h-56 w-full cursor-pointer object-cover transition duration-500 group-hover:scale-105 sm:h-64"
             />
           ) : (
-            <div className="flex h-64 w-full items-center justify-center bg-zinc-900 text-zinc-500">
+            <div className="flex h-56 w-full items-center justify-center bg-zinc-900 text-zinc-500 sm:h-64">
               No Image
             </div>
           )}
 
           <button
             type="button"
-            className="absolute right-4 top-4 rounded-full bg-black/70 p-2 text-white"
+            className="absolute right-3 top-3 rounded-full bg-black/70 p-2 text-white sm:right-4 sm:top-4"
           >
             <Heart className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="p-5">
+        <div className="p-4 sm:p-5">
           <p className="text-xs uppercase tracking-[0.25em] text-zinc-500">
             {product.category}
           </p>
-          <h3 className="mt-2 line-clamp-2 text-lg font-semibold text-white">
+          <h3 className="mt-2 line-clamp-2 text-base font-semibold text-white sm:text-lg">
             {product.name}
           </h3>
           <div className="mt-3 flex items-center gap-2 text-sm text-zinc-400">
@@ -90,12 +83,34 @@ function HomeProductCard({ product }: { product: any }) {
             <span>(128)</span>
           </div>
           <div className="mt-4 flex items-center gap-3">
-            <span className="text-xl font-bold text-white">₹{product.price}</span>
+            <span className="text-lg font-bold text-white sm:text-xl">₹{product.price}</span>
           </div>
         </div>
       </Link>
     </div>
   );
+}
+
+function HeroImageCard({
+  product,
+  heightClass,
+}: {
+  product?: any;
+  heightClass: string;
+}) {
+  if (product?.image_url) {
+    return (
+      <div className={`overflow-hidden rounded-3xl bg-zinc-900 ${heightClass}`}>
+        <img
+          src={product.image_url}
+          alt={product.name}
+          className="h-full w-full object-cover transition duration-500 hover:scale-105"
+        />
+      </div>
+    );
+  }
+
+  return <div className={`rounded-3xl bg-zinc-900 ${heightClass}`} />;
 }
 
 export default function Page() {
@@ -118,8 +133,14 @@ export default function Page() {
     loadProducts();
   }, []);
 
+  const heroProducts = useMemo(() => {
+    return products.filter((p) => p.image_url).slice(0, 3);
+  }, [products]);
+
   const featuredProducts = useMemo(() => products.slice(0, 8), [products]);
-  const trendingProducts = useMemo(() => products.slice(8, 16), [products]);
+  const trendingProducts = useMemo(() => {
+    return products.length > 8 ? products.slice(8, 16) : products.slice(0, 8);
+  }, [products]);
 
   const filteredProducts = useMemo(() => {
     return products.filter(
@@ -127,57 +148,87 @@ export default function Page() {
     );
   }, [products, activeCategory]);
 
+  const totalStock = useMemo(() => {
+    return products.reduce((sum, product) => {
+      const sizes = product.sizes || {};
+      return (
+        sum +
+        Number(sizes.S || 0) +
+        Number(sizes.M || 0) +
+        Number(sizes.L || 0) +
+        Number(sizes.XL || 0)
+      );
+    }, 0);
+  }, [products]);
+
+  const totalProducts = products.length;
+  const totalCategories = new Set(products.map((p) => p.category)).size || 5;
+
+  const dynamicStats = [
+    { value: `${totalStock || 25000}+`, label: "Clothes Sold" },
+    { value: `${Math.max(totalProducts * 5, 12500)}+`, label: "Happy Customers" },
+    { value: `${totalProducts || 250}+`, label: "Products Listed" },
+    { value: `${Math.max(totalCategories * 36, 180)}+`, label: "Cities Delivered" },
+  ];
+
   return (
     <div className="min-h-screen bg-black text-white">
       <section className="relative overflow-hidden border-b border-white/10">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.14),transparent_22%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.08),transparent_28%)]" />
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 lg:grid-cols-[1.1fr_0.9fr] lg:px-8 lg:py-20">
+        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:py-12 lg:grid-cols-[1.1fr_0.9fr] lg:px-8 lg:py-20">
           <div className="relative z-10 flex flex-col justify-center">
-            <span className="mb-4 w-fit rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.3em] text-zinc-300">
+            <span className="mb-4 w-fit rounded-full border border-white/15 bg-white/5 px-4 py-2 text-[10px] uppercase tracking-[0.28em] text-zinc-300 sm:text-xs sm:tracking-[0.3em]">
               Best dark premium design for DivuCloset
             </span>
-            <h2 className="max-w-3xl text-4xl font-bold leading-tight md:text-6xl">
-              Shop fashion that feels <span className="text-zinc-400">luxurious</span>, modern and bold.
+
+            <h2 className="max-w-3xl text-3xl font-bold leading-tight sm:text-5xl md:text-6xl">
+              Shop fashion that feels{" "}
+              <span className="text-zinc-400">luxurious</span>, modern and bold.
             </h2>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-zinc-400 md:text-lg">
+
+            <p className="mt-5 max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base md:text-lg">
               Real products from your admin panel now appear on the homepage too.
             </p>
-            <div className="mt-8 flex flex-wrap gap-4">
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4">
               <Link
                 href="/women"
-                className="rounded-full bg-white px-6 py-3 font-semibold text-black hover:bg-zinc-200"
+                className="rounded-full bg-white px-6 py-3 text-center font-semibold text-black hover:bg-zinc-200"
               >
                 Shop Now
               </Link>
               <Link
                 href="/contact-us"
-                className="rounded-full border border-white/15 px-6 py-3 font-semibold text-white hover:bg-white hover:text-black"
+                className="rounded-full border border-white/15 px-6 py-3 text-center font-semibold text-white hover:bg-white hover:text-black"
               >
                 Contact Us
               </Link>
             </div>
+
             <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-4">
-              {stats.map((item) => (
+              {dynamicStats.map((item) => (
                 <div
                   key={item.label}
                   className="rounded-2xl border border-white/10 bg-zinc-950/60 p-4"
                 >
-                  <p className="text-2xl font-bold">{item.value}</p>
-                  <p className="mt-1 text-sm text-zinc-400">{item.label}</p>
+                  <p className="text-xl font-bold sm:text-2xl">{item.value}</p>
+                  <p className="mt-1 text-xs text-zinc-400 sm:text-sm">{item.label}</p>
                 </div>
               ))}
             </div>
           </div>
 
           <div className="relative z-10 grid grid-cols-2 gap-4">
-            <div className="h-72 rounded-3xl bg-zinc-900 md:h-80" />
-            <div className="mt-8 h-72 rounded-3xl bg-zinc-900 md:h-80" />
-            <div className="h-56 rounded-3xl bg-zinc-900" />
-            <div className="flex h-56 flex-col justify-center rounded-3xl border border-white/10 bg-zinc-950 p-6">
-              <p className="text-xs uppercase tracking-[0.35em] text-zinc-500">
+            <HeroImageCard product={heroProducts[0]} heightClass="h-56 sm:h-72 md:h-80" />
+            <div className="mt-6 sm:mt-8">
+              <HeroImageCard product={heroProducts[1]} heightClass="h-56 sm:h-72 md:h-80" />
+            </div>
+            <HeroImageCard product={heroProducts[2]} heightClass="h-44 sm:h-56" />
+            <div className="flex h-44 flex-col justify-center rounded-3xl border border-white/10 bg-zinc-950 p-5 sm:h-56 sm:p-6">
+              <p className="text-[10px] uppercase tracking-[0.35em] text-zinc-500 sm:text-xs">
                 Featured Offer
               </p>
-              <h3 className="mt-3 text-3xl font-bold">Fresh Admin Products</h3>
+              <h3 className="mt-3 text-2xl font-bold sm:text-3xl">Fresh Admin Products</h3>
               <p className="mt-2 text-sm text-zinc-400">
                 Products you add in admin now show across the store.
               </p>
@@ -186,7 +237,7 @@ export default function Page() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-14 lg:px-8">
+      <section className="mx-auto max-w-7xl px-4 py-12 lg:px-8 lg:py-14">
         <div className="mb-8">
           <p className="text-sm uppercase tracking-[0.35em] text-zinc-500">Shop by Category</p>
           <h2 className="mt-2 text-3xl font-bold">Browse your main collections</h2>
@@ -207,7 +258,7 @@ export default function Page() {
       </section>
 
       <section className="border-y border-white/10 bg-zinc-950/50">
-        <div className="mx-auto max-w-7xl px-4 py-14 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 py-12 lg:px-8 lg:py-14">
           <div className="mb-8">
             <p className="text-sm uppercase tracking-[0.35em] text-zinc-500">Featured Products</p>
             <h2 className="mt-2 text-3xl font-bold">Latest from your admin panel</h2>
@@ -227,7 +278,7 @@ export default function Page() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-14 lg:px-8">
+      <section className="mx-auto max-w-7xl px-4 py-12 lg:px-8 lg:py-14">
         <div className="mb-8">
           <p className="text-sm uppercase tracking-[0.35em] text-zinc-500">Trending Now</p>
           <h2 className="mt-2 text-3xl font-bold">More real products</h2>
@@ -247,13 +298,13 @@ export default function Page() {
       </section>
 
       <section className="border-y border-white/10 bg-zinc-950/50">
-        <div className="mx-auto max-w-7xl px-4 py-14 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 py-12 lg:px-8 lg:py-14">
           <div className="mb-6 flex flex-wrap gap-3">
             {categoryData.map((category) => (
               <button
                 key={category.name}
                 onClick={() => setActiveCategory(category.name)}
-                className={`rounded-full px-5 py-3 text-sm font-semibold transition ${
+                className={`rounded-full px-4 py-3 text-sm font-semibold transition sm:px-5 ${
                   activeCategory === category.name
                     ? "bg-white text-black"
                     : "border border-white/10 bg-transparent text-white hover:bg-white hover:text-black"
@@ -264,7 +315,7 @@ export default function Page() {
             ))}
           </div>
 
-          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.35em] text-zinc-500">{activeCategory}</p>
               <h2 className="mt-2 text-3xl font-bold">Products in this category</h2>
@@ -286,7 +337,7 @@ export default function Page() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-14 lg:px-8">
+      <section className="mx-auto max-w-7xl px-4 py-12 lg:px-8 lg:py-14">
         <div className="mb-8">
           <p className="text-sm uppercase tracking-[0.35em] text-zinc-500">Why customers choose us</p>
           <h2 className="mt-2 text-3xl font-bold">Extra homepage section for strong brand trust</h2>
@@ -311,7 +362,7 @@ export default function Page() {
       </section>
 
       <section className="border-y border-white/10 bg-zinc-950/50">
-        <div className="mx-auto max-w-7xl px-4 py-14 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 py-12 lg:px-8 lg:py-14">
           <div className="mb-8">
             <p className="text-sm uppercase tracking-[0.35em] text-zinc-500">Testimonials</p>
             <h2 className="mt-2 text-3xl font-bold">What happy customers say</h2>
@@ -335,10 +386,12 @@ export default function Page() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-14 lg:px-8">
-        <div className="rounded-[2rem] border border-white/10 bg-gradient-to-r from-zinc-950 to-black p-8 lg:p-10">
+      <section className="mx-auto max-w-7xl px-4 py-12 lg:px-8 lg:py-14">
+        <div className="rounded-[2rem] border border-white/10 bg-gradient-to-r from-zinc-950 to-black p-6 sm:p-8 lg:p-10">
           <p className="text-sm uppercase tracking-[0.35em] text-zinc-500">Contact Us</p>
-          <h2 className="mt-2 text-3xl font-bold">Need help with orders, products, or support?</h2>
+          <h2 className="mt-2 text-2xl font-bold sm:text-3xl">
+            Need help with orders, products, or support?
+          </h2>
           <p className="mt-4 max-w-2xl text-zinc-400">
             Add your real phone number, email, address, Instagram, and WhatsApp here.
           </p>
@@ -347,7 +400,7 @@ export default function Page() {
 
       <a
         href="https://wa.me/916392342474"
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-green-500 px-5 py-3 font-semibold text-black shadow-2xl transition hover:scale-105"
+        className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full bg-green-500 px-4 py-3 text-sm font-semibold text-black shadow-2xl transition hover:scale-105 sm:bottom-6 sm:right-6 sm:px-5"
       >
         <MessageCircle className="h-5 w-5" /> WhatsApp
       </a>
