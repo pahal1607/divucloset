@@ -3,17 +3,14 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Menu, Search, X } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { createClient } from "./supabaseBrowser";
 
 const ADMIN_EMAIL = "keertidwivedi2008@gmail.com";
 
 export default function SiteHeader() {
   const supabase = createClient();
-  const router = useRouter();
 
   const [cartCount, setCartCount] = useState(0);
-  const [search, setSearch] = useState("");
   const [loggedIn, setLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -59,14 +56,6 @@ export default function SiteHeader() {
 
   const closeMobile = () => setMobileOpen(false);
 
-  const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const value = search.trim();
-    if (!value) return;
-    closeMobile();
-    router.push(`/search?q=${encodeURIComponent(value)}`);
-  };
-
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-black/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
@@ -80,14 +69,14 @@ export default function SiteHeader() {
         </Link>
 
         <form
-          onSubmit={handleSearchSubmit}
+          action="/search"
+          method="GET"
           className="hidden flex-1 lg:block lg:max-w-xl"
         >
           <div className="relative">
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
             <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              name="q"
               placeholder="Search for products..."
               className="w-full rounded-full border border-white/10 bg-zinc-950 py-3 pl-11 pr-14 text-sm text-white outline-none"
             />
@@ -143,11 +132,10 @@ export default function SiteHeader() {
       </div>
 
       <div className="px-4 pb-4 sm:px-6 lg:hidden">
-        <form onSubmit={handleSearchSubmit} className="relative">
+        <form action="/search" method="GET" className="relative">
           <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
           <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            name="q"
             placeholder="Search"
             className="w-full rounded-full border border-white/10 bg-zinc-950 py-3 pl-11 pr-16 text-sm text-white outline-none"
           />
