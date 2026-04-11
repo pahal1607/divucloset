@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Menu, Search, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { createClient } from "./supabaseBrowser";
 
 const ADMIN_EMAIL = "keertidwivedi2008@gmail.com";
 
 export default function SiteHeader() {
   const supabase = createClient();
+  const router = useRouter();
 
   const [cartCount, setCartCount] = useState(0);
   const [search, setSearch] = useState("");
@@ -57,6 +59,19 @@ export default function SiteHeader() {
 
   const closeMobile = () => setMobileOpen(false);
 
+  const handleSearch = () => {
+    const value = search.trim();
+    if (!value) return;
+    closeMobile();
+    router.push(`/search?q=${encodeURIComponent(value)}`);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
+  };
+
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-black/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
@@ -75,9 +90,16 @@ export default function SiteHeader() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder="Search for products..."
-              className="w-full rounded-full border border-white/10 bg-zinc-950 py-3 pl-11 pr-4 text-sm text-white outline-none"
+              className="w-full rounded-full border border-white/10 bg-zinc-950 py-3 pl-11 pr-12 text-sm text-white outline-none"
             />
+            <button
+              onClick={handleSearch}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-black hover:bg-zinc-200"
+            >
+              Go
+            </button>
           </div>
         </div>
 
@@ -128,9 +150,16 @@ export default function SiteHeader() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="Search"
-            className="w-full rounded-full border border-white/10 bg-zinc-950 py-3 pl-11 pr-4 text-sm text-white outline-none"
+            className="w-full rounded-full border border-white/10 bg-zinc-950 py-3 pl-11 pr-16 text-sm text-white outline-none"
           />
+          <button
+            onClick={handleSearch}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-black"
+          >
+            Go
+          </button>
         </div>
       </div>
 
