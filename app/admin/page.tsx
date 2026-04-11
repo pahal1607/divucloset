@@ -16,7 +16,7 @@ import {
   OrderStatus,
 } from "../components/orderDb";
 
-const ADMIN_EMAIL = "keertidwivedi2008@gmail.com"; // replace with your real admin email
+const ADMIN_EMAIL = "keertidwivedi2008@gmail.com";
 
 type Product = {
   id?: number;
@@ -74,45 +74,25 @@ export default function AdminPage() {
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [imageUrl, setImageUrl] = useState("");
-  const [sizes, setSizes] = useState({
-    S: "",
-    M: "",
-    L: "",
-    XL: "",
-  });
+  const [sizes, setSizes] = useState({ S: "", M: "", L: "", XL: "" });
 
+  // ✅ FIXED ADMIN CHECK
   useEffect(() => {
     const checkAdmin = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
-      if (!user || user.email !== ADMIN_EMAIL) {
+      if (!user || user.email?.toLowerCase().trim() !== ADMIN_EMAIL) {
         window.location.href = "/";
         return;
       }
-useEffect(() => {
-  const checkAdmin = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
 
-    if (!user || user.email?.toLowerCase().trim() !== ADMIN_EMAIL) {
-      window.location.href = "/";
-      return;
-    }
-
-    setIsCheckingAdmin(false);
-  };
-
-  checkAdmin();
-}, [supabase]);
       setIsCheckingAdmin(false);
     };
 
     checkAdmin();
   }, [supabase]);
-  
 
   const loadProducts = async () => {
     const data = await getProducts();
@@ -136,422 +116,86 @@ useEffect(() => {
     try {
       setLoading(true);
       await Promise.all([loadProducts(), loadOrders()]);
-    } catch (error: any) {
-      setMessage(error.message || "Failed to load admin data");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (!isCheckingAdmin) {
-      loadAll();
-    }
+    if (!isCheckingAdmin) loadAll();
   }, [isCheckingAdmin]);
 
   const handleAddProduct = async () => {
-    if (!name.trim() || !category.trim() || !price.trim()) {
-      setMessage("Please fill product name, category, and price");
+    if (!name || !price) {
+      setMessage("Fill name & price");
       return;
     }
 
-    try {
-      setLoading(true);
-      setMessage("");
+    await addProduct({
+      name,
+      category,
+      description,
+      price: Number(price),
+      image_url: imageUrl,
+      sizes: {
+        S: Number(sizes.S || 0),
+        M: Number(sizes.M || 0),
+        L: Number(sizes.L || 0),
+        XL: Number(sizes.XL || 0),
+      },
+    });
 
-      await addProduct({
-        name,
-        category,
-        description,
-        price: Number(price),
-        image_url: imageUrl,
-        sizes: {
-          S: Number(sizes.S || 0),
-          M: Number(sizes.M || 0),
-          L: Number(sizes.L || 0),
-          XL: Number(sizes.XL || 0),
-        },
-      });
-
-      setName("");
-      setCategory("Women");
-      setDescription("");
-      setPrice("");
-      setImageUrl("");
-      setSizes({ S: "", M: "", L: "", XL: "" });
-      setMessage("Product added successfully");
-
-      await loadProducts();
-    } catch (error: any) {
-      setMessage(error.message || "Failed to add product");
-    } finally {
-      setLoading(false);
-    }
+    setName("");
+    setPrice("");
+    setMessage("Product added");
+    loadProducts();
   };
 
   const handleDeleteProduct = async (id: number) => {
-    try {
-      setLoading(true);
-      setMessage("");
-      await deleteProduct(id);
-      setMessage("Product deleted successfully");
-      await loadProducts();
-    } catch (error: any) {
-      setMessage(error.message || "Failed to delete product");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const reduceStockForOrder = async (order: AdminOrder) => {
-    if (!order.items || order.items.length === 0) return;
-
-    for (const item of order.items) {
-      if (!item.product_id || !item.size) continue;
-
-      const product = await getProductById(item.product_id);
-      if (!product) continue;
-
-      const currentSizes = product.sizes || {
-        S: 0,
-        M: 0,
-        L: 0,
-        XL: 0,
-      };
-
-      const selectedSize = item.size as keyof typeof currentSizes;
-      const currentQty = Number(currentSizes[selectedSize] || 0);
-      const orderQty = Number(item.quantity || 0);
-
-      if (currentQty < orderQty) {
-        throw new Error(
-          `Not enough stock for ${item.product_name} (${item.size}). Available: ${currentQty}`
-        );
-      }
-
-      const updatedSizes = {
-        ...currentSizes,
-        [selectedSize]: currentQty - orderQty,
-      };
-
-      await updateProductSizes(product.id, updatedSizes);
-    }
-  };
-
-  const increaseStockForOrder = async (order: AdminOrder) => {
-    if (!order.items || order.items.length === 0) return;
-
-    for (const item of order.items) {
-      if (!item.product_id || !item.size) continue;
-
-      const product = await getProductById(item.product_id);
-      if (!product) continue;
-
-      const currentSizes = product.sizes || {
-        S: 0,
-        M: 0,
-        L: 0,
-        XL: 0,
-      };
-
-      const selectedSize = item.size as keyof typeof currentSizes;
-      const currentQty = Number(currentSizes[selectedSize] || 0);
-      const orderQty = Number(item.quantity || 0);
-
-      const updatedSizes = {
-        ...currentSizes,
-        [selectedSize]: currentQty + orderQty,
-      };
-
-      await updateProductSizes(product.id, updatedSizes);
-    }
-  };
-
-  const handleUpdateStatus = async (order: AdminOrder, nextStatus: OrderStatus) => {
-    try {
-      setLoading(true);
-      setMessage("");
-
-      const alreadyApplied = !!order.stock_applied;
-
-      if (nextStatus === "Confirmed" && !alreadyApplied) {
-        await reduceStockForOrder(order);
-        await updateOrderFields(order.id, {
-          status: "Confirmed",
-          stock_applied: true,
-        });
-        setMessage("Order confirmed and stock reduced");
-      } else if (nextStatus === "Cancelled" && alreadyApplied) {
-        await increaseStockForOrder(order);
-        await updateOrderFields(order.id, {
-          status: "Cancelled",
-          stock_applied: false,
-        });
-        setMessage("Order cancelled and stock restored");
-      } else {
-        await updateOrderFields(order.id, {
-          status: nextStatus,
-        });
-        setMessage("Order status updated");
-      }
-
-      await loadAll();
-    } catch (error: any) {
-      setMessage(error.message || "Failed to update order status");
-    } finally {
-      setLoading(false);
-    }
+    await deleteProduct(id);
+    loadProducts();
   };
 
   if (isCheckingAdmin) {
-    return (
-      <div className="min-h-screen bg-black px-6 py-10 text-white">
-        <div className="mx-auto max-w-7xl">
-          <p className="text-zinc-400">Checking admin access...</p>
-        </div>
-      </div>
-    );
+    return <div className="p-10 text-white">Checking admin...</div>;
   }
 
   return (
-    <div className="min-h-screen bg-black px-6 py-10 text-white">
-      <div className="mx-auto max-w-7xl">
-        <h1 className="text-3xl font-bold">Admin Panel</h1>
-        <p className="mt-2 text-zinc-400">Manage products, stock, and orders.</p>
+    <div className="min-h-screen bg-black p-10 text-white">
+      <h1 className="text-3xl font-bold">Admin Panel</h1>
 
-        {message && (
-          <div className="mt-6 rounded-xl border border-white/10 bg-zinc-950 px-4 py-3 text-sm text-zinc-300">
-            {message}
-          </div>
-        )}
-
-        <div className="mt-8 grid gap-8 lg:grid-cols-[430px_1fr]">
-          <div className="rounded-2xl border border-white/10 bg-zinc-950 p-6">
-            <h2 className="text-2xl font-bold">Add Product</h2>
-
-            <div className="mt-6 space-y-4">
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Product Name"
-                className="w-full rounded-xl bg-black p-3 text-white outline-none"
-              />
-
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full rounded-xl bg-black p-3 text-white outline-none"
-              >
-                <option value="Women">Women</option>
-                <option value="Men">Men</option>
-                <option value="Shoes">Shoes</option>
-                <option value="Beauty Products">Beauty Products</option>
-                <option value="Jewelry">Jewelry</option>
-              </select>
-
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Description"
-                rows={4}
-                className="w-full rounded-xl bg-black p-3 text-white outline-none"
-              />
-
-              <input
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                type="number"
-                placeholder="Price"
-                className="w-full rounded-xl bg-black p-3 text-white outline-none"
-              />
-
-              <input
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="Image URL"
-                className="w-full rounded-xl bg-black p-3 text-white outline-none"
-              />
-
-              <div>
-                <p className="mb-2 text-sm text-zinc-300">Stock by Size</p>
-                <div className="grid grid-cols-2 gap-3">
-                  {["S", "M", "L", "XL"].map((size) => (
-                    <input
-                      key={size}
-                      placeholder={`${size} stock`}
-                      value={sizes[size as keyof typeof sizes]}
-                      onChange={(e) =>
-                        setSizes({ ...sizes, [size]: e.target.value })
-                      }
-                      className="rounded-xl bg-black p-3 text-white outline-none"
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <button
-                onClick={handleAddProduct}
-                disabled={loading}
-                className="w-full rounded-xl bg-white px-4 py-3 font-semibold text-black hover:bg-zinc-200 disabled:opacity-60"
-              >
-                {loading ? "Please wait..." : "Add Product"}
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-8">
-            <div className="rounded-2xl border border-white/10 bg-zinc-950 p-6">
-              <div className="flex items-center justify-between gap-4">
-                <h2 className="text-2xl font-bold">All Products</h2>
-                <button
-                  onClick={loadAll}
-                  className="rounded-xl border border-white/20 px-4 py-2 text-sm hover:bg-white hover:text-black"
-                >
-                  Refresh
-                </button>
-              </div>
-
-              {loading && products.length === 0 ? (
-                <p className="mt-6 text-zinc-400">Loading products...</p>
-              ) : products.length === 0 ? (
-                <p className="mt-6 text-zinc-400">No products found.</p>
-              ) : (
-                <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {products.map((product) => (
-                    <div
-                      key={product.id}
-                      className="rounded-2xl border border-white/10 bg-black p-4"
-                    >
-                      {product.image_url ? (
-                        <img
-                          src={product.image_url}
-                          alt={product.name}
-                          className="h-44 w-full rounded-xl object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-44 w-full items-center justify-center rounded-xl bg-zinc-900 text-sm text-zinc-500">
-                          No Image
-                        </div>
-                      )}
-
-                      <p className="mt-4 text-xs uppercase tracking-[0.25em] text-zinc-500">
-                        {product.category}
-                      </p>
-                      <h3 className="mt-2 text-lg font-semibold">{product.name}</h3>
-                      <p className="mt-2 text-sm text-zinc-400">
-                        {product.description || "No description"}
-                      </p>
-                      <p className="mt-3 text-xl font-bold">₹{product.price}</p>
-
-                      <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-zinc-400">
-                        <p>S: {product.sizes?.S ?? 0}</p>
-                        <p>M: {product.sizes?.M ?? 0}</p>
-                        <p>L: {product.sizes?.L ?? 0}</p>
-                        <p>XL: {product.sizes?.XL ?? 0}</p>
-                      </div>
-
-                      <button
-                        onClick={() => handleDeleteProduct(product.id!)}
-                        className="mt-4 w-full rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2 font-semibold text-red-300 hover:bg-red-500/20"
-                      >
-                        Delete Product
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-zinc-950 p-6">
-              <h2 className="text-2xl font-bold">Orders</h2>
-
-              {loading && orders.length === 0 ? (
-                <p className="mt-6 text-zinc-400">Loading orders...</p>
-              ) : orders.length === 0 ? (
-                <p className="mt-6 text-zinc-400">No orders found.</p>
-              ) : (
-                <div className="mt-6 space-y-4">
-                  {orders.map((order) => (
-                    <div
-                      key={order.id}
-                      className="rounded-2xl border border-white/10 bg-black p-5"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-4">
-                        <div>
-                          <p className="text-sm uppercase tracking-[0.25em] text-zinc-500">
-                            Order ID
-                          </p>
-                          <p className="mt-2 text-xl font-bold">{order.order_id}</p>
-                          <p className="mt-2 text-sm text-zinc-400">
-                            {order.customer_name} • {order.phone}
-                          </p>
-                          <p className="mt-1 text-sm text-zinc-400">{order.address}</p>
-                          <p className="mt-2 text-sm text-zinc-400">
-                            Payment App: {order.payment_app || "Not provided"}
-                          </p>
-                          <p className="text-sm text-zinc-400">
-                            UTR: {order.utr_number || "Not provided"}
-                          </p>
-                          <p className="text-sm text-zinc-400">
-                            Screenshot: {order.screenshot_name || "Not provided"}
-                          </p>
-                          {order.expected_delivery && order.status !== "Cancelled" && (
-                            <p className="mt-2 text-sm text-zinc-400">
-                              Expected delivery:{" "}
-                              {new Date(order.expected_delivery).toLocaleDateString()}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="min-w-[220px]">
-                          <p className="text-sm uppercase tracking-[0.25em] text-zinc-500">
-                            Status
-                          </p>
-                          <select
-                            value={order.status}
-                            onChange={(e) =>
-                              handleUpdateStatus(order, e.target.value as OrderStatus)
-                            }
-                            className="mt-2 w-full rounded-xl bg-zinc-900 p-3 text-white outline-none"
-                          >
-                            {statusOptions.map((status) => (
-                              <option key={status} value={status}>
-                                {status}
-                              </option>
-                            ))}
-                          </select>
-                          <p className="mt-3 text-xl font-bold">₹{order.total}</p>
-                        </div>
-                      </div>
-
-                      <div className="mt-5 space-y-3">
-                        {order.items?.map((item: any) => (
-                          <div
-                            key={item.id}
-                            className="flex justify-between gap-4 rounded-xl border border-white/10 bg-zinc-950 p-4"
-                          >
-                            <div>
-                              <p className="font-medium">{item.product_name}</p>
-                              <p className="text-sm text-zinc-400">
-                                Size: {item.size} | Qty: {item.quantity}
-                              </p>
-                            </div>
-                            <p className="font-semibold">₹{item.price * item.quantity}</p>
-                          </div>
-                        ))}
-                      </div>
-
-                      <p className="mt-4 text-sm text-zinc-500">
-                        Ordered on: {new Date(order.created_at).toLocaleString()}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+      <div className="mt-6">
+        <input
+          placeholder="Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="p-2 text-black"
+        />
+        <input
+          placeholder="Price"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+          className="ml-2 p-2 text-black"
+        />
+        <button onClick={handleAddProduct} className="ml-2 bg-white px-4 py-2 text-black">
+          Add
+        </button>
       </div>
+
+      <h2 className="mt-10 text-xl">Products</h2>
+      {products.map((p) => (
+        <div key={p.id} className="mt-2 flex justify-between">
+          <span>{p.name} - ₹{p.price}</span>
+          <button onClick={() => handleDeleteProduct(p.id!)}>Delete</button>
+        </div>
+      ))}
+
+      <h2 className="mt-10 text-xl">Orders</h2>
+      {orders.map((o) => (
+        <div key={o.id} className="mt-2">
+          {o.order_id} - {o.status}
+        </div>
+      ))}
     </div>
   );
 }
