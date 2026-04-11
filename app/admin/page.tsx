@@ -91,12 +91,28 @@ export default function AdminPage() {
         window.location.href = "/";
         return;
       }
+useEffect(() => {
+  const checkAdmin = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
+    if (!user || user.email?.toLowerCase().trim() !== ADMIN_EMAIL) {
+      window.location.href = "/";
+      return;
+    }
+
+    setIsCheckingAdmin(false);
+  };
+
+  checkAdmin();
+}, [supabase]);
       setIsCheckingAdmin(false);
     };
 
     checkAdmin();
   }, [supabase]);
+  
 
   const loadProducts = async () => {
     const data = await getProducts();

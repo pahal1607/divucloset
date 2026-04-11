@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import { createClient } from "./supabaseBrowser";
 
-const ADMIN_EMAIL = "keertidwivedi2008@gmail.com"; // replace with your real admin email
+const ADMIN_EMAIL = "keertidwivedi2008@gmail.com";
 
 export default function SiteHeader() {
   const supabase = createClient();
@@ -32,7 +32,10 @@ export default function SiteHeader() {
       } = await supabase.auth.getUser();
 
       setLoggedIn(!!user);
-      setIsAdmin(!!user && user.email === ADMIN_EMAIL);
+      setIsAdmin(
+        !!user &&
+          user.email?.toLowerCase().trim() === ADMIN_EMAIL
+      );
     };
 
     updateCart();
@@ -138,10 +141,9 @@ export default function SiteHeader() {
           <Link href="/shoes">Shoes</Link>
           <Link href="/beauty-products">Beauty</Link>
           <Link href="/jewelry">Jewelry</Link>
-
           {isAdmin && <Link href="/admin">Admin</Link>}
         </nav>
       </div>
     </header>
   );
-} 
+}
