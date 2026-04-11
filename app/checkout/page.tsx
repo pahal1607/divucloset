@@ -249,6 +249,46 @@ export default function CheckoutPage() {
               placeholder="UTR / Reference Number"
               className="w-full rounded-xl bg-zinc-900 p-3 text-white outline-none"
             />
+            {/* UTR / Reference */}
+<input
+  placeholder="UTR Number"
+  value={utrNumber}
+  onChange={(e) => setUtrNumber(e.target.value)}
+  className="w-full rounded-xl bg-black p-3 text-white"
+/>
+
+{/* 🔥 Upload Payment Screenshot */}
+<div className="mt-4">
+  <p className="text-sm text-zinc-400">Upload Payment Screenshot</p>
+
+  <input
+    type="file"
+    accept="image/*"
+    className="mt-2"
+    onChange={async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      try {
+        const fileName = `${Date.now()}-${file.name}`;
+
+        const { error } = await supabase.storage
+          .from("payment-proofs")
+          .upload(fileName, file);
+
+        if (error) throw error;
+
+        const { data } = supabase.storage
+          .from("payment-proofs")
+          .getPublicUrl(fileName);
+
+        setScreenshotName(data.publicUrl);
+      } catch (err) {
+        console.error(err);
+      }
+    }}
+  />
+</div>
 
             <div className="rounded-xl border border-white/10 bg-zinc-900 p-4">
               <p className="mb-3 text-sm text-zinc-300">Upload Payment Screenshot</p>
@@ -256,12 +296,35 @@ export default function CheckoutPage() {
               <label className="flex cursor-pointer items-center justify-center gap-3 rounded-xl border border-dashed border-white/20 bg-black px-4 py-4 text-sm text-zinc-300 hover:border-white/40">
                 <Upload className="h-5 w-5" />
                 <span>{screenshotName ? screenshotName : "Choose screenshot file"}</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setScreenshotName(e.target.files?.[0]?.name || "")}
-                  className="hidden"
-                />
+                {/* 🔥 SCREENSHOT UPLOAD START */}
+<input
+  type="file"
+  accept="image/*"
+  onChange={async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const fileName = `${Date.now()}-${file.name}`;
+
+      const { error } = await supabase.storage
+        .from("payment-proofs")
+        .upload(fileName, file);
+
+      if (error) throw error;
+
+      const { data } = supabase.storage
+        .from("payment-proofs")
+        .getPublicUrl(fileName);
+
+      setScreenshotName(data.publicUrl);
+    } catch (err) {
+      console.error(err);
+      setError("Upload failed");
+    }
+  }}
+/>
+{/* 🔥 SCREENSHOT UPLOAD END */}
               </label>
             </div>
           </div>

@@ -97,6 +97,9 @@ export default function SiteHeader() {
           <Link href="/jewelry" className="text-zinc-300 hover:text-white">
             Jewelry
           </Link>
+          <Link href="/track" className="text-zinc-300 hover:text-white">
+  Track
+</Link>
 
           {isAdmin && (
             <Link href="/admin" className="font-semibold text-white hover:text-zinc-300">
@@ -141,6 +144,7 @@ export default function SiteHeader() {
           <Link href="/shoes">Shoes</Link>
           <Link href="/beauty-products">Beauty</Link>
           <Link href="/jewelry">Jewelry</Link>
+          <Link href="/track">Track</Link>
           {isAdmin && <Link href="/admin">Admin</Link>}
         </nav>
       </div>
