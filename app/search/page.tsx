@@ -56,7 +56,7 @@ function SearchProductCard({ product }: { product: any }) {
 
 export default function SearchPage() {
   const searchParams = useSearchParams();
-  const q = searchParams.get("q") || "";
+  const q = (searchParams.get("q") || "").trim();
 
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,13 +77,13 @@ export default function SearchPage() {
   }, []);
 
   const filteredProducts = useMemo(() => {
-    const query = q.trim().toLowerCase();
+    const query = q.toLowerCase();
     if (!query) return [];
 
     return products.filter((product) => {
-      const name = product.name?.toLowerCase() || "";
-      const category = product.category?.toLowerCase() || "";
-      const description = product.description?.toLowerCase() || "";
+      const name = String(product.name || "").toLowerCase();
+      const category = String(product.category || "").toLowerCase();
+      const description = String(product.description || "").toLowerCase();
 
       return (
         name.includes(query) ||

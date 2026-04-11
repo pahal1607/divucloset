@@ -59,17 +59,12 @@ export default function SiteHeader() {
 
   const closeMobile = () => setMobileOpen(false);
 
-  const handleSearch = () => {
+  const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     const value = search.trim();
     if (!value) return;
     closeMobile();
     router.push(`/search?q=${encodeURIComponent(value)}`);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      handleSearch();
-    }
   };
 
   return (
@@ -84,24 +79,26 @@ export default function SiteHeader() {
           </p>
         </Link>
 
-        <div className="hidden flex-1 lg:block lg:max-w-xl">
+        <form
+          onSubmit={handleSearchSubmit}
+          className="hidden flex-1 lg:block lg:max-w-xl"
+        >
           <div className="relative">
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={handleKeyDown}
               placeholder="Search for products..."
-              className="w-full rounded-full border border-white/10 bg-zinc-950 py-3 pl-11 pr-12 text-sm text-white outline-none"
+              className="w-full rounded-full border border-white/10 bg-zinc-950 py-3 pl-11 pr-14 text-sm text-white outline-none"
             />
             <button
-              onClick={handleSearch}
+              type="submit"
               className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-black hover:bg-zinc-200"
             >
               Go
             </button>
           </div>
-        </div>
+        </form>
 
         <nav className="hidden items-center gap-6 lg:flex">
           <Link href="/women" className="text-zinc-300 hover:text-white">Women</Link>
@@ -138,6 +135,7 @@ export default function SiteHeader() {
             onClick={() => setMobileOpen((v) => !v)}
             className="rounded-lg border border-white/10 p-2 text-white lg:hidden"
             aria-label="Toggle menu"
+            type="button"
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
@@ -145,45 +143,32 @@ export default function SiteHeader() {
       </div>
 
       <div className="px-4 pb-4 sm:px-6 lg:hidden">
-        <div className="relative">
+        <form onSubmit={handleSearchSubmit} className="relative">
           <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={handleKeyDown}
             placeholder="Search"
             className="w-full rounded-full border border-white/10 bg-zinc-950 py-3 pl-11 pr-16 text-sm text-white outline-none"
           />
           <button
-            onClick={handleSearch}
+            type="submit"
             className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-black"
           >
             Go
           </button>
-        </div>
+        </form>
       </div>
 
       {mobileOpen && (
         <div className="border-t border-white/10 bg-zinc-950 px-4 py-4 lg:hidden">
           <nav className="grid grid-cols-2 gap-3 text-sm">
-            <Link href="/women" onClick={closeMobile} className="rounded-xl border border-white/10 p-3">
-              Women
-            </Link>
-            <Link href="/men" onClick={closeMobile} className="rounded-xl border border-white/10 p-3">
-              Men
-            </Link>
-            <Link href="/shoes" onClick={closeMobile} className="rounded-xl border border-white/10 p-3">
-              Shoes
-            </Link>
-            <Link href="/beauty-products" onClick={closeMobile} className="rounded-xl border border-white/10 p-3">
-              Beauty
-            </Link>
-            <Link href="/jewelry" onClick={closeMobile} className="rounded-xl border border-white/10 p-3">
-              Jewelry
-            </Link>
-            <Link href="/track" onClick={closeMobile} className="rounded-xl border border-white/10 p-3">
-              Track
-            </Link>
+            <Link href="/women" onClick={closeMobile} className="rounded-xl border border-white/10 p-3">Women</Link>
+            <Link href="/men" onClick={closeMobile} className="rounded-xl border border-white/10 p-3">Men</Link>
+            <Link href="/shoes" onClick={closeMobile} className="rounded-xl border border-white/10 p-3">Shoes</Link>
+            <Link href="/beauty-products" onClick={closeMobile} className="rounded-xl border border-white/10 p-3">Beauty</Link>
+            <Link href="/jewelry" onClick={closeMobile} className="rounded-xl border border-white/10 p-3">Jewelry</Link>
+            <Link href="/track" onClick={closeMobile} className="rounded-xl border border-white/10 p-3">Track</Link>
             <Link
               href={loggedIn ? "/account" : "/login"}
               onClick={closeMobile}
@@ -191,9 +176,7 @@ export default function SiteHeader() {
             >
               {loggedIn ? "Account" : "Login"}
             </Link>
-            <Link href="/cart" onClick={closeMobile} className="rounded-xl border border-white/10 p-3">
-              Cart
-            </Link>
+            <Link href="/cart" onClick={closeMobile} className="rounded-xl border border-white/10 p-3">Cart</Link>
             {isAdmin && (
               <Link href="/admin" onClick={closeMobile} className="rounded-xl border border-white/10 p-3">
                 Admin
