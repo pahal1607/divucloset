@@ -50,9 +50,31 @@ export default function LoginPage() {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    try {
+      setLoading(true);
+      setMessage("");
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo:
+            typeof window !== "undefined"
+              ? `${window.location.origin}/account`
+              : undefined,
+        },
+      });
+
+      if (error) throw error;
+    } catch (error: any) {
+      setMessage(error.message || "Google login failed");
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-black px-6 py-12 text-white">
-      <div className="mx-auto w-full max-w-md rounded-[2rem] border border-white/10 bg-zinc-950 p-8 shadow-2xl">
+    <div className="min-h-screen bg-black px-4 py-8 text-white sm:px-6 sm:py-12">
+      <div className="mx-auto w-full max-w-md rounded-[2rem] border border-white/10 bg-zinc-950 p-6 shadow-2xl sm:p-8">
         <div className="mb-8">
           <p className="text-sm uppercase tracking-[0.35em] text-zinc-500">
             {isSignup ? "Create Account" : "Login"}
@@ -60,6 +82,22 @@ export default function LoginPage() {
           <h2 className="mt-3 text-3xl font-bold">
             {isSignup ? "Join DivuCloset" : "Welcome back"}
           </h2>
+        </div>
+
+        <button
+          onClick={handleGoogleLogin}
+          disabled={loading}
+          className="mb-5 w-full rounded-xl border border-white/15 bg-white px-4 py-3 font-semibold text-black hover:bg-zinc-200 disabled:opacity-60"
+        >
+          Continue with Google
+        </button>
+
+        <div className="mb-6 flex items-center gap-3">
+          <div className="h-px flex-1 bg-white/10" />
+          <span className="text-xs uppercase tracking-[0.3em] text-zinc-500">
+            or
+          </span>
+          <div className="h-px flex-1 bg-white/10" />
         </div>
 
         <div className="mb-6 flex rounded-full border border-white/10 bg-black p-1">

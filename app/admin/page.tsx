@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   addProduct,
   deleteProduct,
@@ -68,12 +68,10 @@ export default function AdminPage() {
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [imageUrl, setImageUrl] = useState("");
-  const [sizes, setSizes] = useState({
-    S: "",
-    M: "",
-    L: "",
-    XL: "",
-  });
+  const [sizes, setSizes] = useState({ S: "", M: "", L: "", XL: "" });
+
+  const [orderSearch, setOrderSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
 
   const loadProducts = async () => {
     const data = await getProducts();
@@ -107,6 +105,20 @@ export default function AdminPage() {
   useEffect(() => {
     loadAll();
   }, []);
+
+  const filteredOrders = useMemo(() => {
+    return orders.filter((order) => {
+      const matchesSearch =
+        order.order_id?.toLowerCase().includes(orderSearch.toLowerCase()) ||
+        order.customer_name?.toLowerCase().includes(orderSearch.toLowerCase()) ||
+        order.phone?.toLowerCase().includes(orderSearch.toLowerCase());
+
+      const matchesStatus =
+        statusFilter === "All" ? true : order.status === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [orders, orderSearch, statusFilter]);
 
   const handleAddProduct = async () => {
     if (!name.trim() || !category.trim() || !price.trim()) {
@@ -171,13 +183,7 @@ export default function AdminPage() {
       const product = await getProductById(item.product_id);
       if (!product) continue;
 
-      const currentSizes = product.sizes || {
-        S: 0,
-        M: 0,
-        L: 0,
-        XL: 0,
-      };
-
+      const currentSizes = product.sizes || { S: 0, M: 0, L: 0, XL: 0 };
       const selectedSize = item.size as keyof typeof currentSizes;
       const currentQty = Number(currentSizes[selectedSize] || 0);
       const orderQty = Number(item.quantity || 0);
@@ -206,13 +212,7 @@ export default function AdminPage() {
       const product = await getProductById(item.product_id);
       if (!product) continue;
 
-      const currentSizes = product.sizes || {
-        S: 0,
-        M: 0,
-        L: 0,
-        XL: 0,
-      };
-
+      const currentSizes = product.sizes || { S: 0, M: 0, L: 0, XL: 0 };
       const selectedSize = item.size as keyof typeof currentSizes;
       const currentQty = Number(currentSizes[selectedSize] || 0);
       const orderQty = Number(item.quantity || 0);
@@ -263,7 +263,7 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black px-6 py-10 text-white">
+    <div className="min-h-screen bg-black px-4 py-6 text-white sm:px-6 sm:py-10">
       <div className="mx-auto max-w-7xl">
         <h1 className="text-3xl font-bold">Admin Panel</h1>
         <p className="mt-2 text-zinc-400">Manage products, stock, and orders.</p>
@@ -274,8 +274,8 @@ export default function AdminPage() {
           </div>
         )}
 
-        <div className="mt-8 grid gap-8 lg:grid-cols-[430px_1fr]">
-          <div className="rounded-2xl border border-white/10 bg-zinc-950 p-6">
+        <div className="mt-8 grid gap-8 xl:grid-cols-[430px_1fr]">
+          <div className="rounded-2xl border border-white/10 bg-zinc-950 p-5 sm:p-6">
             <h2 className="text-2xl font-bold">Add Product</h2>
 
             <div className="mt-6 space-y-4">
@@ -349,7 +349,7 @@ export default function AdminPage() {
           </div>
 
           <div className="space-y-8">
-            <div className="rounded-2xl border border-white/10 bg-zinc-950 p-6">
+            <div className="rounded-2xl border border-white/10 bg-zinc-950 p-5 sm:p-6">
               <div className="flex items-center justify-between gap-4">
                 <h2 className="text-2xl font-bold">All Products</h2>
                 <button
@@ -365,7 +365,7 @@ export default function AdminPage() {
               ) : products.length === 0 ? (
                 <p className="mt-6 text-zinc-400">No products found.</p>
               ) : (
-                <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                   {products.map((product) => (
                     <div
                       key={product.id}
@@ -411,26 +411,49 @@ export default function AdminPage() {
               )}
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-zinc-950 p-6">
-              <h2 className="text-2xl font-bold">Orders</h2>
+            <div className="rounded-2xl border border-white/10 bg-zinc-950 p-5 sm:p-6">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <h2 className="text-2xl font-bold">Orders</h2>
+
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <input
+                    value={orderSearch}
+                    onChange={(e) => setOrderSearch(e.target.value)}
+                    placeholder="Search order ID / name / phone"
+                    className="rounded-xl bg-black px-4 py-3 text-sm text-white outline-none"
+                  />
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="rounded-xl bg-black px-4 py-3 text-sm text-white outline-none"
+                  >
+                    <option value="All">All Statuses</option>
+                    {statusOptions.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
               {loading && orders.length === 0 ? (
                 <p className="mt-6 text-zinc-400">Loading orders...</p>
-              ) : orders.length === 0 ? (
-                <p className="mt-6 text-zinc-400">No orders found.</p>
+              ) : filteredOrders.length === 0 ? (
+                <p className="mt-6 text-zinc-400">No matching orders found.</p>
               ) : (
                 <div className="mt-6 space-y-4">
-                  {orders.map((order) => (
+                  {filteredOrders.map((order) => (
                     <div
                       key={order.id}
                       className="rounded-2xl border border-white/10 bg-black p-5"
                     >
-                      <div className="flex flex-wrap items-start justify-between gap-4">
-                        <div>
+                      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0">
                           <p className="text-sm uppercase tracking-[0.25em] text-zinc-500">
                             Order ID
                           </p>
-                          <p className="mt-2 text-xl font-bold">{order.order_id}</p>
+                          <p className="mt-2 break-all text-xl font-bold">{order.order_id}</p>
                           <p className="mt-2 text-sm text-zinc-400">
                             {order.customer_name} • {order.phone}
                           </p>
@@ -441,9 +464,17 @@ export default function AdminPage() {
                           <p className="text-sm text-zinc-400">
                             UTR: {order.utr_number || "Not provided"}
                           </p>
-                          <p className="text-sm text-zinc-400">
-                            Screenshot: {order.screenshot_name || "Not provided"}
-                          </p>
+
+                          {order.screenshot_name && (
+                            <a
+                              href={order.screenshot_name}
+                              target="_blank"
+                              className="mt-2 inline-block text-sm text-blue-400 underline"
+                            >
+                              View Screenshot
+                            </a>
+                          )}
+
                           {order.expected_delivery && order.status !== "Cancelled" && (
                             <p className="mt-2 text-sm text-zinc-400">
                               Expected delivery:{" "}
@@ -452,7 +483,7 @@ export default function AdminPage() {
                           )}
                         </div>
 
-                        <div className="min-w-[220px]">
+                        <div className="w-full lg:max-w-[240px]">
                           <p className="text-sm uppercase tracking-[0.25em] text-zinc-500">
                             Status
                           </p>
@@ -477,7 +508,7 @@ export default function AdminPage() {
                         {order.items?.map((item: any) => (
                           <div
                             key={item.id}
-                            className="flex justify-between gap-4 rounded-xl border border-white/10 bg-zinc-950 p-4"
+                            className="flex flex-col gap-2 rounded-xl border border-white/10 bg-zinc-950 p-4 sm:flex-row sm:items-center sm:justify-between"
                           >
                             <div>
                               <p className="font-medium">{item.product_name}</p>
