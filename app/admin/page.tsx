@@ -6,6 +6,7 @@ import {
   deleteProduct,
   getProductById,
   getProducts,
+  updateProduct,
   updateProductSizes,
 } from "../components/productDb";
 import {
@@ -57,18 +58,22 @@ const statusOptions: OrderStatus[] = [
   "Cancelled",
 ];
 
+const emptySizes = { S: "", M: "", L: "", XL: "" };
+
 export default function AdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
+  const [editingProductId, setEditingProductId] = useState<number | null>(null);
+
   const [name, setName] = useState("");
   const [category, setCategory] = useState("Women");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [imageUrl, setImageUrl] = useState("");
-  const [sizes, setSizes] = useState({ S: "", M: "", L: "", XL: "" });
+  const [sizes, setSizes] = useState(emptySizes);
 
   const [orderSearch, setOrderSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -120,41 +125,68 @@ export default function AdminPage() {
     });
   }, [orders, orderSearch, statusFilter]);
 
-  const handleAddProduct = async () => {
+  const resetForm = () => {
+    setEditingProductId(null);
+    setName("");
+    setCategory("Women");
+    setDescription("");
+    setPrice("");
+    setImageUrl("");
+    setSizes(emptySizes);
+  };
+
+  const handleEditProduct = (product: Product) => {
+    setEditingProductId(product.id || null);
+    setName(product.name || "");
+    setCategory(product.category || "Women");
+    setDescription(product.description || "");
+    setPrice(String(product.price || ""));
+    setImageUrl(product.image_url || "");
+    setSizes({
+      S: String(product.sizes?.S ?? 0),
+      M: String(product.sizes?.M ?? 0),
+      L: String(product.sizes?.L ?? 0),
+      XL: String(product.sizes?.XL ?? 0),
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleSaveProduct = async () => {
     if (!name.trim() || !category.trim() || !price.trim()) {
       setMessage("Please fill product name, category, and price");
       return;
     }
 
+    const payload = {
+      name,
+      category,
+      description,
+      price: Number(price),
+      image_url: imageUrl,
+      sizes: {
+        S: Number(sizes.S || 0),
+        M: Number(sizes.M || 0),
+        L: Number(sizes.L || 0),
+        XL: Number(sizes.XL || 0),
+      },
+    };
+
     try {
       setLoading(true);
       setMessage("");
 
-      await addProduct({
-        name,
-        category,
-        description,
-        price: Number(price),
-        image_url: imageUrl,
-        sizes: {
-          S: Number(sizes.S || 0),
-          M: Number(sizes.M || 0),
-          L: Number(sizes.L || 0),
-          XL: Number(sizes.XL || 0),
-        },
-      });
+      if (editingProductId) {
+        await updateProduct(editingProductId, payload);
+        setMessage("Product updated successfully");
+      } else {
+        await addProduct(payload);
+        setMessage("Product added successfully");
+      }
 
-      setName("");
-      setCategory("Women");
-      setDescription("");
-      setPrice("");
-      setImageUrl("");
-      setSizes({ S: "", M: "", L: "", XL: "" });
-      setMessage("Product added successfully");
-
+      resetForm();
       await loadProducts();
     } catch (error: any) {
-      setMessage(error.message || "Failed to add product");
+      setMessage(error.message || "Failed to save product");
     } finally {
       setLoading(false);
     }
@@ -263,7 +295,7 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black px-4 py-6 text-white sm:px-6 sm:py-10">
+    <div className="min-h-screen bg-black px-4 py-8 text-white sm:px-6 sm:py-10">
       <div className="mx-auto max-w-7xl">
         <h1 className="text-3xl font-bold">Admin Panel</h1>
         <p className="mt-2 text-zinc-400">Manage products, stock, and orders.</p>
@@ -275,8 +307,21 @@ export default function AdminPage() {
         )}
 
         <div className="mt-8 grid gap-8 xl:grid-cols-[430px_1fr]">
-          <div className="rounded-2xl border border-white/10 bg-zinc-950 p-5 sm:p-6">
-            <h2 className="text-2xl font-bold">Add Product</h2>
+          <div className="rounded-3xl border border-white/10 bg-zinc-950 p-5 sm:p-6">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="text-2xl font-bold">
+                {editingProductId ? "Edit Product" : "Add Product"}
+              </h2>
+
+              {editingProductId && (
+                <button
+                  onClick={resetForm}
+                  className="rounded-xl border border-white/20 px-4 py-2 text-sm hover:bg-white hover:text-black"
+                >
+                  Cancel Edit
+                </button>
+              )}
+            </div>
 
             <div className="mt-6 space-y-4">
               <input
@@ -339,17 +384,21 @@ export default function AdminPage() {
               </div>
 
               <button
-                onClick={handleAddProduct}
+                onClick={handleSaveProduct}
                 disabled={loading}
-                className="w-full rounded-xl bg-white px-4 py-3 font-semibold text-black hover:bg-zinc-200 disabled:opacity-60"
+                className="w-full rounded-2xl bg-white px-4 py-3 font-semibold text-black hover:bg-zinc-200 disabled:opacity-60"
               >
-                {loading ? "Please wait..." : "Add Product"}
+                {loading
+                  ? "Please wait..."
+                  : editingProductId
+                  ? "Update Product"
+                  : "Add Product"}
               </button>
             </div>
           </div>
 
           <div className="space-y-8">
-            <div className="rounded-2xl border border-white/10 bg-zinc-950 p-5 sm:p-6">
+            <div className="rounded-3xl border border-white/10 bg-zinc-950 p-5 sm:p-6">
               <div className="flex items-center justify-between gap-4">
                 <h2 className="text-2xl font-bold">All Products</h2>
                 <button
@@ -366,52 +415,81 @@ export default function AdminPage() {
                 <p className="mt-6 text-zinc-400">No products found.</p>
               ) : (
                 <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                  {products.map((product) => (
-                    <div
-                      key={product.id}
-                      className="rounded-2xl border border-white/10 bg-black p-4"
-                    >
-                      {product.image_url ? (
-                        <img
-                          src={product.image_url}
-                          alt={product.name}
-                          className="h-44 w-full rounded-xl object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-44 w-full items-center justify-center rounded-xl bg-zinc-900 text-sm text-zinc-500">
-                          No Image
-                        </div>
-                      )}
+                  {products.map((product) => {
+                    const totalStock =
+                      Number(product.sizes?.S || 0) +
+                      Number(product.sizes?.M || 0) +
+                      Number(product.sizes?.L || 0) +
+                      Number(product.sizes?.XL || 0);
 
-                      <p className="mt-4 text-xs uppercase tracking-[0.25em] text-zinc-500">
-                        {product.category}
-                      </p>
-                      <h3 className="mt-2 text-lg font-semibold">{product.name}</h3>
-                      <p className="mt-2 text-sm text-zinc-400">
-                        {product.description || "No description"}
-                      </p>
-                      <p className="mt-3 text-xl font-bold">₹{product.price}</p>
-
-                      <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-zinc-400">
-                        <p>S: {product.sizes?.S ?? 0}</p>
-                        <p>M: {product.sizes?.M ?? 0}</p>
-                        <p>L: {product.sizes?.L ?? 0}</p>
-                        <p>XL: {product.sizes?.XL ?? 0}</p>
-                      </div>
-
-                      <button
-                        onClick={() => handleDeleteProduct(product.id!)}
-                        className="mt-4 w-full rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2 font-semibold text-red-300 hover:bg-red-500/20"
+                    return (
+                      <div
+                        key={product.id}
+                        className="rounded-3xl border border-white/10 bg-black p-4"
                       >
-                        Delete Product
-                      </button>
-                    </div>
-                  ))}
+                        {product.image_url ? (
+                          <img
+                            src={product.image_url}
+                            alt={product.name}
+                            className="h-44 w-full rounded-2xl object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-44 w-full items-center justify-center rounded-2xl bg-zinc-900 text-sm text-zinc-500">
+                            No Image
+                          </div>
+                        )}
+
+                        <p className="mt-4 text-xs uppercase tracking-[0.25em] text-zinc-500">
+                          {product.category}
+                        </p>
+                        <h3 className="mt-2 text-lg font-semibold">{product.name}</h3>
+                        <p className="mt-2 text-sm text-zinc-400">
+                          {product.description || "No description"}
+                        </p>
+                        <p className="mt-3 text-xl font-bold">₹{product.price}</p>
+
+                        <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-zinc-400">
+                          <p>S: {product.sizes?.S ?? 0}</p>
+                          <p>M: {product.sizes?.M ?? 0}</p>
+                          <p>L: {product.sizes?.L ?? 0}</p>
+                          <p>XL: {product.sizes?.XL ?? 0}</p>
+                        </div>
+
+                        <div className="mt-3">
+                          {totalStock <= 5 ? (
+                            <span className="rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-xs font-medium text-red-300">
+                              Low Stock: {totalStock}
+                            </span>
+                          ) : (
+                            <span className="rounded-full border border-white/10 bg-zinc-950 px-3 py-1 text-xs font-medium text-zinc-300">
+                              Stock: {totalStock}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-2 gap-3">
+                          <button
+                            onClick={() => handleEditProduct(product)}
+                            className="rounded-xl border border-white/20 px-4 py-2 font-semibold hover:bg-white hover:text-black"
+                          >
+                            Edit
+                          </button>
+
+                          <button
+                            onClick={() => handleDeleteProduct(product.id!)}
+                            className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2 font-semibold text-red-300 hover:bg-red-500/20"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-zinc-950 p-5 sm:p-6">
+            <div className="rounded-3xl border border-white/10 bg-zinc-950 p-5 sm:p-6">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <h2 className="text-2xl font-bold">Orders</h2>
 
@@ -446,7 +524,7 @@ export default function AdminPage() {
                   {filteredOrders.map((order) => (
                     <div
                       key={order.id}
-                      className="rounded-2xl border border-white/10 bg-black p-5"
+                      className="rounded-3xl border border-white/10 bg-black p-5"
                     >
                       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                         <div className="min-w-0">
