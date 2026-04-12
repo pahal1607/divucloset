@@ -6,7 +6,9 @@ import { Heart, Star } from "lucide-react";
 import { getProducts } from "../components/productDb";
 
 function SearchProductCard({ product }: { product: any }) {
-  const slug = product.category.toLowerCase().replace(/ /g, "-");
+  const slug = String(product.category || "")
+    .toLowerCase()
+    .replace(/ /g, "-");
 
   return (
     <div className="group overflow-hidden rounded-3xl border border-white/10 bg-zinc-950 transition duration-300 hover:-translate-y-1 hover:border-white/20">
@@ -99,9 +101,11 @@ export default function SearchClient({ q }: { q: string }) {
         <p className="text-sm uppercase tracking-[0.35em] text-zinc-500">
           Search Results
         </p>
+
         <h1 className="mt-2 text-3xl font-bold">
           {query ? `Results for "${query}"` : "Search products"}
         </h1>
+
         <p className="mt-3 text-zinc-400">
           {query
             ? `Found ${filteredProducts.length} matching product(s).`
