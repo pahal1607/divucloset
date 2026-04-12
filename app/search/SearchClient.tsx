@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { Heart, Star } from "lucide-react";
 import { getProducts } from "../components/productDb";
 
@@ -56,9 +55,8 @@ function SearchProductCard({ product }: { product: any }) {
   );
 }
 
-export default function SearchClient() {
-  const searchParams = useSearchParams();
-  const q = (searchParams.get("q") || "").trim();
+export default function SearchClient({ q }: { q: string }) {
+  const query = q.trim();
 
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,8 +77,8 @@ export default function SearchClient() {
   }, []);
 
   const filteredProducts = useMemo(() => {
-    const query = q.toLowerCase();
-    if (!query) return [];
+    const lower = query.toLowerCase();
+    if (!lower) return [];
 
     return products.filter((product) => {
       const name = String(product.name || "").toLowerCase();
@@ -88,12 +86,12 @@ export default function SearchClient() {
       const description = String(product.description || "").toLowerCase();
 
       return (
-        name.includes(query) ||
-        category.includes(query) ||
-        description.includes(query)
+        name.includes(lower) ||
+        category.includes(lower) ||
+        description.includes(lower)
       );
     });
-  }, [products, q]);
+  }, [products, query]);
 
   return (
     <div className="min-h-screen bg-black px-4 py-8 text-white sm:px-6 sm:py-10">
@@ -102,17 +100,17 @@ export default function SearchClient() {
           Search Results
         </p>
         <h1 className="mt-2 text-3xl font-bold">
-          {q ? `Results for "${q}"` : "Search products"}
+          {query ? `Results for "${query}"` : "Search products"}
         </h1>
         <p className="mt-3 text-zinc-400">
-          {q
+          {query
             ? `Found ${filteredProducts.length} matching product(s).`
             : "Type something in the search bar to find products."}
         </p>
 
         {loading ? (
           <p className="mt-8 text-zinc-400">Loading products...</p>
-        ) : !q ? (
+        ) : !query ? (
           <div className="mt-8 rounded-3xl border border-white/10 bg-zinc-950 p-6 text-zinc-400">
             Search by product name, category, or description.
           </div>
