@@ -1,6 +1,7 @@
 import "./globals.css";
 import SiteHeader from "./components/SiteHeader";
 import Footer from "./components/Footer";
+import Loader from "./components/Loader";
 
 export const metadata = {
   title: "DivuCloset",
@@ -15,6 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-black text-white">
+        <Loader />
         <SiteHeader />
         {children}
         <Footer />
