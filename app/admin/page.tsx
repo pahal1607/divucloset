@@ -23,15 +23,12 @@ type Product = {
   id?: number;
   name: string;
   category: string;
+  subcategory?: string;
   description: string;
   price: number;
   image_url: string;
-  sizes?: {
-    S: number;
-    M: number;
-    L: number;
-    XL: number;
-  };
+  images?: string[];
+  sizes?: Record<string, number>;
 };
 
 type AdminOrder = {
@@ -61,7 +58,7 @@ const statusOptions: OrderStatus[] = [
   "Cancelled",
 ];
 
-const emptySizes = { S: "", M: "", L: "", XL: "" };
+const defaultSizeInputs = [{ size: "", stock: "" }];
 
 export default function AdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -73,14 +70,40 @@ export default function AdminPage() {
 
   const [name, setName] = useState("");
   const [category, setCategory] = useState("Women");
+  const [subcategory, setSubcategory] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [sizes, setSizes] = useState(emptySizes);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
+  const [sizeInputs, setSizeInputs] = useState(defaultSizeInputs);
 
   const [orderSearch, setOrderSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+
+  const uploadProductImages = async (files: File[]) => {
+    const uploadedUrls: string[] = [];
+
+    for (const file of files) {
+      const fileName = `${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}-${file.name}`;
+
+      const { error } = await supabase.storage
+        .from("product-images")
+        .upload(fileName, file);
+
+      if (error) throw error;
+
+      const { data } = supabase.storage
+        .from("product-images")
+        .getPublicUrl(fileName);
+
+      uploadedUrls.push(data.publicUrl);
+    }
+
+    return uploadedUrls;
+  };
 
   const loadProducts = async () => {
     const data = await getProducts();
@@ -117,10 +140,12 @@ export default function AdminPage() {
 
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
+      const search = orderSearch.toLowerCase();
+
       const matchesSearch =
-        order.order_id?.toLowerCase().includes(orderSearch.toLowerCase()) ||
-        order.customer_name?.toLowerCase().includes(orderSearch.toLowerCase()) ||
-        order.phone?.toLowerCase().includes(orderSearch.toLowerCase());
+        order.order_id?.toLowerCase().includes(search) ||
+        order.customer_name?.toLowerCase().includes(search) ||
+        order.phone?.toLowerCase().includes(search);
 
       const matchesStatus =
         statusFilter === "All" ? true : order.status === statusFilter;
@@ -133,48 +158,41 @@ export default function AdminPage() {
     setEditingProductId(null);
     setName("");
     setCategory("Women");
+    setSubcategory("");
     setDescription("");
     setPrice("");
     setImageUrl("");
-    setSizes(emptySizes);
+    setImageFiles([]);
+    setExistingImages([]);
+    setSizeInputs([{ size: "", stock: "" }]);
   };
-
-  // 🔥 Upload images to Supabase
-const uploadProductImages = async (files: File[]) => {
-  const uploadedUrls: string[] = [];
-
-  for (const file of files) {
-    const fileName = `${Date.now()}-${file.name}`;
-
-    const { error } = await supabase.storage
-      .from("product-images")
-      .upload(fileName, file);
-
-    if (error) throw error;
-
-    const { data } = supabase.storage
-      .from("product-images")
-      .getPublicUrl(fileName);
-
-    uploadedUrls.push(data.publicUrl);
-  }
-
-  return uploadedUrls;
-};
 
   const handleEditProduct = (product: Product) => {
     setEditingProductId(product.id || null);
     setName(product.name || "");
     setCategory(product.category || "Women");
+    setSubcategory(product.subcategory || "");
     setDescription(product.description || "");
     setPrice(String(product.price || ""));
     setImageUrl(product.image_url || "");
-    setSizes({
-      S: String(product.sizes?.S ?? 0),
-      M: String(product.sizes?.M ?? 0),
-      L: String(product.sizes?.L ?? 0),
-      XL: String(product.sizes?.XL ?? 0),
-    });
+    setImageFiles([]);
+
+    const galleryImages =
+      Array.isArray(product.images) && product.images.length > 0
+        ? product.images
+        : product.image_url
+        ? [product.image_url]
+        : [];
+
+    setExistingImages(galleryImages);
+
+    const mappedSizes = Object.entries(product.sizes || {}).map(([size, stock]) => ({
+      size,
+      stock: String(stock ?? 0),
+    }));
+
+    setSizeInputs(mappedSizes.length > 0 ? mappedSizes : [{ size: "", stock: "" }]);
+
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -183,38 +201,47 @@ const uploadProductImages = async (files: File[]) => {
       setMessage("Please fill product name, category, and price");
       return;
     }
-let uploadedImageUrls: string[] = [];
-
-if (imageFiles.length > 0) {
-  uploadedImageUrls = await uploadProductImages(imageFiles);
-}
-
-const finalMainImage = uploadedImageUrls[0] || imageUrl || "";
-const finalImages =
-  uploadedImageUrls.length > 0
-    ? uploadedImageUrls
-    : imageUrl
-    ? [imageUrl]
-    : [];
-
-    const payload = {
-  name,
-  category,
-  description,
-  price: Number(price),
-  image_url: finalMainImage,
-  images: finalImages,
-  sizes: {
-    S: Number(sizes.S || 0),
-    M: Number(sizes.M || 0),
-    L: Number(sizes.L || 0),
-    XL: Number(sizes.XL || 0),
-  },
-};
 
     try {
       setLoading(true);
       setMessage("");
+
+      let uploadedImageUrls: string[] = [];
+
+      if (imageFiles.length > 0) {
+        uploadedImageUrls = await uploadProductImages(imageFiles);
+      }
+
+      const finalImages =
+        uploadedImageUrls.length > 0
+          ? uploadedImageUrls
+          : existingImages.length > 0
+          ? existingImages
+          : imageUrl
+          ? [imageUrl]
+          : [];
+
+      const finalMainImage = finalImages[0] || "";
+
+      const formattedSizes: Record<string, number> = {};
+
+      sizeInputs.forEach((item) => {
+        const cleanSize = item.size.trim();
+        if (cleanSize) {
+          formattedSizes[cleanSize] = Number(item.stock || 0);
+        }
+      });
+
+      const payload = {
+        name,
+        category,
+        subcategory,
+        description,
+        price: Number(price),
+        image_url: finalMainImage,
+        images: finalImages,
+        sizes: formattedSizes,
+      };
 
       if (editingProductId) {
         await updateProduct(editingProductId, payload);
@@ -256,8 +283,8 @@ const finalImages =
       const product = await getProductById(item.product_id);
       if (!product) continue;
 
-      const currentSizes = product.sizes || { S: 0, M: 0, L: 0, XL: 0 };
-      const selectedSize = item.size as keyof typeof currentSizes;
+      const currentSizes: Record<string, number> = product.sizes || {};
+      const selectedSize = String(item.size);
       const currentQty = Number(currentSizes[selectedSize] || 0);
       const orderQty = Number(item.quantity || 0);
 
@@ -272,7 +299,8 @@ const finalImages =
         [selectedSize]: currentQty - orderQty,
       };
 
-      await updateProductSizes(product.id, updatedSizes);
+      if (!product.id) continue;
+await updateProductSizes(product.id, updatedSizes);
     }
   };
 
@@ -285,8 +313,8 @@ const finalImages =
       const product = await getProductById(item.product_id);
       if (!product) continue;
 
-      const currentSizes = product.sizes || { S: 0, M: 0, L: 0, XL: 0 };
-      const selectedSize = item.size as keyof typeof currentSizes;
+      const currentSizes: Record<string, number> = product.sizes || {};
+      const selectedSize = String(item.size);
       const currentQty = Number(currentSizes[selectedSize] || 0);
       const orderQty = Number(item.quantity || 0);
 
@@ -295,7 +323,8 @@ const finalImages =
         [selectedSize]: currentQty + orderQty,
       };
 
-      await updateProductSizes(product.id, updatedSizes);
+      if (!product.id) continue;
+await updateProductSizes(product.id, updatedSizes);
     }
   };
 
@@ -384,6 +413,13 @@ const finalImages =
                 <option value="Jewelry">Jewelry</option>
               </select>
 
+              <input
+                value={subcategory}
+                onChange={(e) => setSubcategory(e.target.value)}
+                placeholder="Subcategory (Jeans, Tops, Shirts...)"
+                className="w-full rounded-xl bg-black p-3 text-white outline-none"
+              />
+
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -400,48 +436,109 @@ const finalImages =
                 className="w-full rounded-xl bg-black p-3 text-white outline-none"
               />
 
-              {/* 🔥 Upload Product Images */}
-<div>
-  <p className="mb-2 text-sm text-zinc-300">Upload Images</p>
+              <div className="space-y-3">
+                <p className="text-sm text-zinc-300">Main Image URL (optional)</p>
+                <input
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="Image URL (optional if uploading files)"
+                  className="w-full rounded-xl bg-black p-3 text-white outline-none"
+                />
 
-  <input
-    type="file"
-    multiple
-    accept="image/*"
-    onChange={(e) => {
-      const files = Array.from(e.target.files || []);
-      setImageFiles(files);
-    }}
-    className="w-full rounded-xl bg-black p-3 text-white outline-none"
-  />
+                <p className="text-sm text-zinc-300">Upload Product Images</p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => setImageFiles(Array.from(e.target.files || []))}
+                  className="w-full rounded-xl bg-black p-3 text-white outline-none file:mr-3 file:rounded-lg file:border-0 file:bg-white file:px-3 file:py-2 file:text-black"
+                />
 
-  {/* Preview */}
-  <div className="mt-3 flex gap-2 flex-wrap">
-    {imageFiles.map((file, i) => (
-      <img
-        key={i}
-        src={URL.createObjectURL(file)}
-        className="h-16 w-16 rounded object-cover"
-      />
-    ))}
-  </div>
-</div>
+                {imageFiles.length > 0 && (
+                  <div>
+                    <p className="mb-2 text-sm text-zinc-400">Selected uploads</p>
+                    <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+                      {imageFiles.map((file, index) => (
+                        <div
+                          key={`${file.name}-${index}`}
+                          className="rounded-xl border border-white/10 bg-black p-2"
+                        >
+                          <img
+                            src={URL.createObjectURL(file)}
+                            alt={file.name}
+                            className="h-20 w-full rounded-lg object-cover"
+                          />
+                          <p className="mt-2 truncate text-[11px] text-zinc-400">
+                            {file.name}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {imageFiles.length === 0 && existingImages.length > 0 && (
+                  <div>
+                    <p className="mb-2 text-sm text-zinc-400">Current product images</p>
+                    <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+                      {existingImages.map((img, index) => (
+                        <div
+                          key={`${img}-${index}`}
+                          className="rounded-xl border border-white/10 bg-black p-2"
+                        >
+                          <img
+                            src={img}
+                            alt={`Product ${index + 1}`}
+                            className="h-20 w-full rounded-lg object-cover"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <div>
-                <p className="mb-2 text-sm text-zinc-300">Stock by Size</p>
-                <div className="grid grid-cols-2 gap-3">
-                  {["S", "M", "L", "XL"].map((size) => (
-                    <input
-                      key={size}
-                      placeholder={`${size} stock`}
-                      value={sizes[size as keyof typeof sizes]}
-                      onChange={(e) =>
-                        setSizes({ ...sizes, [size]: e.target.value })
-                      }
-                      className="rounded-xl bg-black p-3 text-white outline-none"
-                    />
+                <p className="mb-2 text-sm text-zinc-300">Sizes & Stock</p>
+
+                <div className="space-y-2">
+                  {sizeInputs.map((item, index) => (
+                    <div key={index} className="flex gap-2">
+                      <input
+                        placeholder="Size (S, M or 30, 32)"
+                        value={item.size}
+                        onChange={(e) => {
+                          const updated = [...sizeInputs];
+                          updated[index].size = e.target.value;
+                          setSizeInputs(updated);
+                        }}
+                        className="w-1/2 rounded-xl bg-black p-3 text-white outline-none"
+                      />
+
+                      <input
+                        type="number"
+                        placeholder="Stock"
+                        value={item.stock}
+                        onChange={(e) => {
+                          const updated = [...sizeInputs];
+                          updated[index].stock = e.target.value;
+                          setSizeInputs(updated);
+                        }}
+                        className="w-1/2 rounded-xl bg-black p-3 text-white outline-none"
+                      />
+                    </div>
                   ))}
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSizeInputs([...sizeInputs, { size: "", stock: "" }])
+                  }
+                  className="mt-3 text-sm text-blue-400"
+                >
+                  + Add Size
+                </button>
               </div>
 
               <button
@@ -477,11 +574,14 @@ const finalImages =
               ) : (
                 <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                   {products.map((product) => {
-                    const totalStock =
-                      Number(product.sizes?.S || 0) +
-                      Number(product.sizes?.M || 0) +
-                      Number(product.sizes?.L || 0) +
-                      Number(product.sizes?.XL || 0);
+                    const totalStock = Object.values(product.sizes || {}).reduce(
+                      (sum, qty) => sum + Number(qty || 0),
+                      0
+                    );
+
+                    const sizePreview = Object.entries(product.sizes || {})
+                      .slice(0, 4)
+                      .map(([size, qty]) => `${size}: ${qty}`);
 
                     return (
                       <div
@@ -502,18 +602,28 @@ const finalImages =
 
                         <p className="mt-4 text-xs uppercase tracking-[0.25em] text-zinc-500">
                           {product.category}
+                          {product.subcategory ? ` / ${product.subcategory}` : ""}
                         </p>
+
                         <h3 className="mt-2 text-lg font-semibold">{product.name}</h3>
                         <p className="mt-2 text-sm text-zinc-400">
                           {product.description || "No description"}
                         </p>
                         <p className="mt-3 text-xl font-bold">₹{product.price}</p>
 
-                        <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-zinc-400">
-                          <p>S: {product.sizes?.S ?? 0}</p>
-                          <p>M: {product.sizes?.M ?? 0}</p>
-                          <p>L: {product.sizes?.L ?? 0}</p>
-                          <p>XL: {product.sizes?.XL ?? 0}</p>
+                        <div className="mt-3 flex flex-wrap gap-2 text-xs text-zinc-400">
+                          {sizePreview.length > 0 ? (
+                            sizePreview.map((item, index) => (
+                              <span
+                                key={index}
+                                className="rounded-full border border-white/10 bg-zinc-950 px-3 py-1"
+                              >
+                                {item}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-zinc-500">No sizes</span>
+                          )}
                         </div>
 
                         <div className="mt-3">
@@ -608,6 +718,7 @@ const finalImages =
                             <a
                               href={order.screenshot_name}
                               target="_blank"
+                              rel="noreferrer"
                               className="mt-2 inline-block text-sm text-blue-400 underline"
                             >
                               View Screenshot

@@ -1,21 +1,18 @@
-import { supabase } from "./supabaseClient";
-import { toError } from "./errorUtils";
+import { createClient } from "./supabaseBrowser";
 
-export type ProductSizes = {
-  S: number;
-  M: number;
-  L: number;
-  XL: number;
-};
+const supabase = createClient();
 
-export type DbProduct = {
+export type ProductRecord = {
   id?: number;
   name: string;
   category: string;
+  subcategory?: string;
   description: string;
   price: number;
   image_url: string;
-  sizes?: ProductSizes;
+  images?: string[];
+  sizes?: Record<string, number>;
+  created_at?: string;
 };
 
 export async function getProducts() {
@@ -24,8 +21,8 @@ export async function getProducts() {
     .select("*")
     .order("id", { ascending: false });
 
-  if (error) throw toError(error);
-  return data;
+  if (error) throw error;
+  return data as ProductRecord[];
 }
 
 export async function getProductById(id: number) {
@@ -35,41 +32,49 @@ export async function getProductById(id: number) {
     .eq("id", id)
     .single();
 
-  if (error) throw toError(error);
-  return data;
+  if (error) throw error;
+  return data as ProductRecord;
 }
 
-export async function addProduct(product: DbProduct) {
+export async function addProduct(payload: ProductRecord) {
   const { data, error } = await supabase
     .from("products")
-    .insert([product])
-    .select();
+    .insert([payload])
+    .select()
+    .single();
 
-  if (error) throw toError(error);
-  return data;
+  if (error) throw error;
+  return data as ProductRecord;
 }
 
 export async function updateProduct(
   id: number,
-  product: Omit<DbProduct, "id">
+  payload: Partial<ProductRecord>
 ) {
   const { data, error } = await supabase
     .from("products")
-    .update(product)
+    .update(payload)
     .eq("id", id)
     .select()
     .single();
 
-  if (error) throw toError(error);
-  return data;
+  if (error) throw error;
+  return data as ProductRecord;
 }
 
 export async function deleteProduct(id: number) {
-  const { error } = await supabase.from("products").delete().eq("id", id);
-  if (error) throw toError(error);
+  const { error } = await supabase
+    .from("products")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
 }
 
-export async function updateProductSizes(id: number, sizes: ProductSizes) {
+export async function updateProductSizes(
+  id: number,
+  sizes: Record<string, number>
+) {
   const { data, error } = await supabase
     .from("products")
     .update({ sizes })
@@ -77,6 +82,6 @@ export async function updateProductSizes(id: number, sizes: ProductSizes) {
     .select()
     .single();
 
-  if (error) throw toError(error);
-  return data;
+  if (error) throw error;
+  return data as ProductRecord;
 }
