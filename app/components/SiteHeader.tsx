@@ -237,9 +237,9 @@ export default function SiteHeader() {
           <Link href="/jewelry" className="text-zinc-300 hover:text-white">
             Jewelry
           </Link>
-          <Link href="/track" className="text-zinc-300 hover:text-white">
-            Track
-          </Link>
+          <Link href="/contact-us" className="text-zinc-300 hover:text-white">
+  Contact Us
+</Link>
           {isAdmin && (
             <Link href="/admin" className="font-semibold text-white hover:text-zinc-300">
               Admin
