@@ -107,6 +107,25 @@ export default function ProductDetailPage({
     return Math.round(((fakeMrp - Number(product.price)) / fakeMrp) * 100);
   }, [fakeMrp, product]);
 
+  const sizeLabel = useMemo(() => {
+    const sub = String(product?.subcategory || "").toLowerCase();
+    const cat = String(product?.category || "").toLowerCase();
+
+    if (
+      sub.includes("jean") ||
+      sub.includes("trouser") ||
+      sub.includes("pant")
+    ) {
+      return "Waist Size";
+    }
+
+    if (cat.includes("shoe")) {
+      return "Shoe Size";
+    }
+
+    return "Select Size";
+  }, [product]);
+
   const showToast = (message: string, type: ToastType) => {
     setToastMessage(message);
     setToastType(type);
@@ -114,7 +133,7 @@ export default function ProductDetailPage({
 
   const handleIncrease = () => {
     if (!selectedSize) {
-      showToast("Select a size first", "error");
+      showToast(`${sizeLabel} first`, "error");
       return;
     }
     if (quantity >= selectedStock) {
@@ -137,7 +156,7 @@ export default function ProductDetailPage({
     if (!product) return;
 
     if (!selectedSize) {
-      showToast("Please select a size first", "error");
+      showToast(`Please select ${sizeLabel.toLowerCase()} first`, "error");
       return;
     }
 
@@ -213,9 +232,7 @@ export default function ProductDetailPage({
 
       <div className="mx-auto max-w-7xl">
         <div className="grid gap-8 xl:grid-cols-[560px_1fr]">
-          {/* LEFT SIDE */}
           <div className="grid gap-4 md:grid-cols-[92px_1fr]">
-            {/* Thumbnails */}
             <div className="order-2 flex gap-3 overflow-x-auto md:order-1 md:max-h-[640px] md:flex-col md:overflow-y-auto md:overflow-x-hidden">
               {galleryImages.map((img: string, index: number) => (
                 <button
@@ -234,7 +251,6 @@ export default function ProductDetailPage({
               ))}
             </div>
 
-            {/* Main image */}
             <div className="order-1 md:order-2">
               <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-950">
                 {selectedImage ? (
@@ -267,7 +283,7 @@ export default function ProductDetailPage({
                 )}
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-2">
+              <div className="mt-4 grid grid-cols-2 gap-3">
                 <button
                   onClick={handleAddToCart}
                   className="rounded-2xl bg-white px-6 py-4 font-semibold text-black hover:bg-zinc-200"
@@ -284,10 +300,10 @@ export default function ProductDetailPage({
             </div>
           </div>
 
-          {/* RIGHT SIDE */}
           <div>
             <p className="text-sm uppercase tracking-[0.3em] text-zinc-500">
               {product.category || title}
+              {product.subcategory ? ` / ${product.subcategory}` : ""}
             </p>
 
             <div className="mt-3 flex items-start justify-between gap-4">
@@ -327,7 +343,7 @@ export default function ProductDetailPage({
             </div>
 
             <div className="mt-8 rounded-2xl border border-white/10 bg-zinc-950 p-5">
-              <h2 className="text-lg font-semibold">Select Size</h2>
+              <h2 className="text-lg font-semibold">{sizeLabel}</h2>
               <div className="mt-4 flex flex-wrap gap-3">
                 {Object.entries(product.sizes || {}).map(([size, qty]) => (
                   <button
@@ -396,7 +412,6 @@ export default function ProductDetailPage({
               </div>
             </div>
 
-            {/* Tabs */}
             <div className="mt-8 rounded-[2rem] border border-white/10 bg-zinc-950 p-5">
               <div className="flex flex-wrap gap-3">
                 <button
@@ -446,7 +461,11 @@ export default function ProductDetailPage({
                     <p className="mt-1 text-zinc-300">{product.category || "-"}</p>
                   </div>
                   <div className="border-b border-white/10 pb-4">
-                    <p className="text-sm text-zinc-500">Available Sizes</p>
+                    <p className="text-sm text-zinc-500">Subcategory</p>
+                    <p className="mt-1 text-zinc-300">{product.subcategory || "-"}</p>
+                  </div>
+                  <div className="border-b border-white/10 pb-4">
+                    <p className="text-sm text-zinc-500">{sizeLabel}</p>
                     <p className="mt-1 text-zinc-300">{availableSizes || "-"}</p>
                   </div>
                   <div className="border-b border-white/10 pb-4">
@@ -471,25 +490,25 @@ export default function ProductDetailPage({
                     <div className="p-4 text-sm text-zinc-300">{product.category}</div>
                   </div>
                   <div className="grid grid-cols-2 border-b border-white/10 bg-black">
+                    <div className="p-4 text-sm text-zinc-500">Subcategory</div>
+                    <div className="p-4 text-sm text-zinc-300">
+                      {product.subcategory || "-"}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 border-b border-white/10 bg-zinc-950">
                     <div className="p-4 text-sm text-zinc-500">Price</div>
                     <div className="p-4 text-sm text-zinc-300">₹{product.price}</div>
                   </div>
-                  <div className="grid grid-cols-2 border-b border-white/10 bg-zinc-950">
+                  <div className="grid grid-cols-2 border-b border-white/10 bg-black">
                     <div className="p-4 text-sm text-zinc-500">Stock</div>
                     <div className="p-4 text-sm text-zinc-300">{totalStock}</div>
                   </div>
-                  <div className="grid grid-cols-2 bg-black">
-                    <div className="p-4 text-sm text-zinc-500">Sizes</div>
+                  <div className="grid grid-cols-2 bg-zinc-950">
+                    <div className="p-4 text-sm text-zinc-500">{sizeLabel}</div>
                     <div className="p-4 text-sm text-zinc-300">{availableSizes || "-"}</div>
                   </div>
                 </div>
               )}
-            </div>
-
-            <div className="mt-8 rounded-2xl border border-white/10 bg-zinc-950 p-5 text-sm text-zinc-400">
-              <p>✔ Premium dark shopping experience</p>
-              <p className="mt-2">✔ Easy category browsing</p>
-              <p className="mt-2">✔ Real stock connected from admin panel</p>
             </div>
           </div>
         </div>
