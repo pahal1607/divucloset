@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createClient } from "../components/supabaseBrowser";
 import {
   addProduct,
   deleteProduct,
@@ -15,6 +16,8 @@ import {
   updateOrderFields,
   OrderStatus,
 } from "../components/orderDb";
+
+const supabase = createClient();
 
 type Product = {
   id?: number;
@@ -73,6 +76,7 @@ export default function AdminPage() {
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [sizes, setSizes] = useState(emptySizes);
 
   const [orderSearch, setOrderSearch] = useState("");
@@ -135,6 +139,29 @@ export default function AdminPage() {
     setSizes(emptySizes);
   };
 
+  // 🔥 Upload images to Supabase
+const uploadProductImages = async (files: File[]) => {
+  const uploadedUrls: string[] = [];
+
+  for (const file of files) {
+    const fileName = `${Date.now()}-${file.name}`;
+
+    const { error } = await supabase.storage
+      .from("product-images")
+      .upload(fileName, file);
+
+    if (error) throw error;
+
+    const { data } = supabase.storage
+      .from("product-images")
+      .getPublicUrl(fileName);
+
+    uploadedUrls.push(data.publicUrl);
+  }
+
+  return uploadedUrls;
+};
+
   const handleEditProduct = (product: Product) => {
     setEditingProductId(product.id || null);
     setName(product.name || "");
@@ -156,20 +183,34 @@ export default function AdminPage() {
       setMessage("Please fill product name, category, and price");
       return;
     }
+let uploadedImageUrls: string[] = [];
+
+if (imageFiles.length > 0) {
+  uploadedImageUrls = await uploadProductImages(imageFiles);
+}
+
+const finalMainImage = uploadedImageUrls[0] || imageUrl || "";
+const finalImages =
+  uploadedImageUrls.length > 0
+    ? uploadedImageUrls
+    : imageUrl
+    ? [imageUrl]
+    : [];
 
     const payload = {
-      name,
-      category,
-      description,
-      price: Number(price),
-      image_url: imageUrl,
-      sizes: {
-        S: Number(sizes.S || 0),
-        M: Number(sizes.M || 0),
-        L: Number(sizes.L || 0),
-        XL: Number(sizes.XL || 0),
-      },
-    };
+  name,
+  category,
+  description,
+  price: Number(price),
+  image_url: finalMainImage,
+  images: finalImages,
+  sizes: {
+    S: Number(sizes.S || 0),
+    M: Number(sizes.M || 0),
+    L: Number(sizes.L || 0),
+    XL: Number(sizes.XL || 0),
+  },
+};
 
     try {
       setLoading(true);
@@ -359,12 +400,32 @@ export default function AdminPage() {
                 className="w-full rounded-xl bg-black p-3 text-white outline-none"
               />
 
-              <input
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="Image URL"
-                className="w-full rounded-xl bg-black p-3 text-white outline-none"
-              />
+              {/* 🔥 Upload Product Images */}
+<div>
+  <p className="mb-2 text-sm text-zinc-300">Upload Images</p>
+
+  <input
+    type="file"
+    multiple
+    accept="image/*"
+    onChange={(e) => {
+      const files = Array.from(e.target.files || []);
+      setImageFiles(files);
+    }}
+    className="w-full rounded-xl bg-black p-3 text-white outline-none"
+  />
+
+  {/* Preview */}
+  <div className="mt-3 flex gap-2 flex-wrap">
+    {imageFiles.map((file, i) => (
+      <img
+        key={i}
+        src={URL.createObjectURL(file)}
+        className="h-16 w-16 rounded object-cover"
+      />
+    ))}
+  </div>
+</div>
 
               <div>
                 <p className="mb-2 text-sm text-zinc-300">Stock by Size</p>
