@@ -2,11 +2,20 @@
 
 import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Heart, Minus, Plus, ShieldCheck, Truck } from "lucide-react";
+import {
+  Heart,
+  Minus,
+  Plus,
+  ShieldCheck,
+  Truck,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { addToCart } from "../../components/cartUtils";
 import { getProductById } from "../../components/productDb";
 
 type ToastType = "success" | "error";
+type TabType = "description" | "highlights" | "details";
 
 export default function ProductDetailPage({
   params,
@@ -21,12 +30,23 @@ export default function ProductDetailPage({
   const [quantity, setQuantity] = useState(1);
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState<ToastType>("success");
+  const [selectedImage, setSelectedImage] = useState("");
+  const [activeTab, setActiveTab] = useState<TabType>("description");
 
   useEffect(() => {
     const loadProduct = async () => {
       try {
         const data = await getProductById(Number(id));
         setProduct(data);
+
+        const gallery =
+          data?.images && Array.isArray(data.images) && data.images.length > 0
+            ? data.images
+            : data?.image_url
+            ? [data.image_url]
+            : [];
+
+        setSelectedImage(gallery[0] || "");
       } catch (error) {
         console.error("Failed to load product:", error);
         setProduct(null);
@@ -57,10 +77,35 @@ export default function ProductDetailPage({
     return Number(product.sizes[selectedSize] || 0);
   }, [product, selectedSize]);
 
+  const galleryImages = useMemo(() => {
+    if (!product) return [];
+    if (Array.isArray(product.images) && product.images.length > 0) {
+      return product.images;
+    }
+    if (product.image_url) return [product.image_url];
+    return [];
+  }, [product]);
+
   const title = category
     .split("-")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+
+  const availableSizes = useMemo(() => {
+    return Object.entries(product?.sizes || {})
+      .filter(([, qty]) => Number(qty) > 0)
+      .map(([size]) => size)
+      .join(", ");
+  }, [product]);
+
+  const fakeMrp = useMemo(() => {
+    return product?.price ? Math.round(Number(product.price) * 1.35) : 0;
+  }, [product]);
+
+  const discountPercent = useMemo(() => {
+    if (!product?.price || !fakeMrp) return 0;
+    return Math.round(((fakeMrp - Number(product.price)) / fakeMrp) * 100);
+  }, [fakeMrp, product]);
 
   const showToast = (message: string, type: ToastType) => {
     setToastMessage(message);
@@ -105,7 +150,7 @@ export default function ProductDetailPage({
       id: product.id,
       name: product.name,
       price: product.price,
-      image: product.image_url || "",
+      image: selectedImage || product.image_url || "",
       size: selectedSize,
       quantity,
     });
@@ -113,10 +158,26 @@ export default function ProductDetailPage({
     showToast(`${product.name} added to cart`, "success");
   };
 
+  const goPrevImage = () => {
+    if (galleryImages.length <= 1) return;
+    const currentIndex = galleryImages.indexOf(selectedImage);
+    const prevIndex =
+      currentIndex <= 0 ? galleryImages.length - 1 : currentIndex - 1;
+    setSelectedImage(galleryImages[prevIndex]);
+  };
+
+  const goNextImage = () => {
+    if (galleryImages.length <= 1) return;
+    const currentIndex = galleryImages.indexOf(selectedImage);
+    const nextIndex =
+      currentIndex === galleryImages.length - 1 ? 0 : currentIndex + 1;
+    setSelectedImage(galleryImages[nextIndex]);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black px-4 py-10 text-white sm:px-6">
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-7xl">
           <p className="text-zinc-400">Loading product...</p>
         </div>
       </div>
@@ -150,148 +211,286 @@ export default function ProductDetailPage({
         </div>
       )}
 
-      <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1fr_1fr] lg:gap-12">
-        <div>
-          {product.image_url ? (
-            <img
-              src={product.image_url}
-              alt={product.name}
-              className="h-[340px] w-full rounded-[2rem] object-cover sm:h-[460px] lg:h-[620px]"
-            />
-          ) : (
-            <div className="flex h-[340px] w-full items-center justify-center rounded-[2rem] bg-zinc-900 text-zinc-500 sm:h-[460px] lg:h-[620px]">
-              No Image
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-col">
-          <p className="text-sm uppercase tracking-[0.35em] text-zinc-500">
-            {product.category || title}
-          </p>
-
-          <div className="mt-3 flex items-start justify-between gap-4">
-            <h1 className="text-3xl font-bold sm:text-4xl">{product.name}</h1>
-            <button
-              type="button"
-              className="rounded-full border border-white/10 p-3 text-zinc-300"
-            >
-              <Heart className="h-5 w-5" />
-            </button>
-          </div>
-
-          <p className="mt-4 text-3xl font-bold">₹{product.price}</p>
-
-          <div className="mt-4 flex flex-wrap gap-3 text-sm">
-            <span className="rounded-full border border-white/10 bg-zinc-950 px-4 py-2 text-zinc-300">
-              Total stock: {totalStock}
-            </span>
-            {totalStock <= 5 && totalStock > 0 && (
-              <span className="rounded-full border border-yellow-500/20 bg-yellow-500/10 px-4 py-2 text-yellow-300">
-                Only {totalStock} left
-              </span>
-            )}
-            {totalStock === 0 && (
-              <span className="rounded-full border border-red-500/20 bg-red-500/10 px-4 py-2 text-red-300">
-                Out of stock
-              </span>
-            )}
-          </div>
-
-          <p className="mt-6 text-base leading-7 text-zinc-400">
-            {product.description || "No description available"}
-          </p>
-
-          <div className="mt-8">
-            <p className="mb-3 text-sm font-medium text-zinc-300">Select Size</p>
-            <div className="flex flex-wrap gap-3">
-              {Object.entries(product.sizes || {}).map(([size, qty]) => (
+      <div className="mx-auto max-w-7xl">
+        <div className="grid gap-8 xl:grid-cols-[560px_1fr]">
+          {/* LEFT SIDE */}
+          <div className="grid gap-4 md:grid-cols-[92px_1fr]">
+            {/* Thumbnails */}
+            <div className="order-2 flex gap-3 overflow-x-auto md:order-1 md:max-h-[640px] md:flex-col md:overflow-y-auto md:overflow-x-hidden">
+              {galleryImages.map((img: string, index: number) => (
                 <button
-                  key={size}
-                  disabled={Number(qty) <= 0}
-                  onClick={() => handleSelectSize(size)}
-                  className={`rounded-xl border px-4 py-3 text-sm font-medium transition ${
-                    selectedSize === size
-                      ? "bg-white text-black"
-                      : "border-white/20 text-white hover:bg-white hover:text-black"
-                  } ${Number(qty) <= 0 ? "cursor-not-allowed opacity-30" : ""}`}
+                  key={index}
+                  onClick={() => setSelectedImage(img)}
+                  className={`shrink-0 overflow-hidden rounded-2xl border-2 ${
+                    selectedImage === img ? "border-white" : "border-white/10"
+                  }`}
                 >
-                  {size} ({Number(qty)})
+                  <img
+                    src={img}
+                    alt={`${product.name} ${index + 1}`}
+                    className="h-20 w-20 object-cover md:h-24 md:w-24"
+                  />
                 </button>
               ))}
             </div>
+
+            {/* Main image */}
+            <div className="order-1 md:order-2">
+              <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-950">
+                {selectedImage ? (
+                  <img
+                    src={selectedImage}
+                    alt={product.name}
+                    className="h-[360px] w-full object-cover sm:h-[460px] xl:h-[640px]"
+                  />
+                ) : (
+                  <div className="flex h-[360px] w-full items-center justify-center text-zinc-500 sm:h-[460px] xl:h-[640px]">
+                    No Image
+                  </div>
+                )}
+
+                {galleryImages.length > 1 && (
+                  <>
+                    <button
+                      onClick={goPrevImage}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/70 p-2 text-white"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={goNextImage}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/70 p-2 text-white"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                  </>
+                )}
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-2">
+                <button
+                  onClick={handleAddToCart}
+                  className="rounded-2xl bg-white px-6 py-4 font-semibold text-black hover:bg-zinc-200"
+                >
+                  Add to Cart
+                </button>
+                <Link
+                  href="/checkout"
+                  className="rounded-2xl border border-white/20 px-6 py-4 text-center font-semibold text-white hover:bg-white hover:text-black"
+                >
+                  Buy Now
+                </Link>
+              </div>
+            </div>
           </div>
 
-          <div className="mt-8">
-            <p className="mb-3 text-sm font-medium text-zinc-300">Quantity</p>
-            <div className="flex w-fit items-center gap-3 rounded-2xl border border-white/10 bg-zinc-950 p-2">
+          {/* RIGHT SIDE */}
+          <div>
+            <p className="text-sm uppercase tracking-[0.3em] text-zinc-500">
+              {product.category || title}
+            </p>
+
+            <div className="mt-3 flex items-start justify-between gap-4">
+              <h1 className="max-w-3xl text-3xl font-bold leading-tight sm:text-4xl">
+                {product.name}
+              </h1>
               <button
                 type="button"
-                onClick={handleDecrease}
-                className="rounded-xl border border-white/10 p-3"
+                className="rounded-full border border-white/10 p-3 text-zinc-300"
               >
-                <Minus className="h-4 w-4" />
+                <Heart className="h-5 w-5" />
               </button>
-              <span className="min-w-[40px] text-center text-lg font-semibold">
-                {quantity}
+            </div>
+
+            <div className="mt-4 flex items-center gap-3">
+              <span className="text-3xl font-bold">₹{product.price}</span>
+              <span className="text-lg text-zinc-500 line-through">₹{fakeMrp}</span>
+              <span className="rounded-full bg-green-500/10 px-3 py-1 text-sm font-medium text-green-400">
+                {discountPercent}% off
               </span>
-              <button
-                type="button"
-                onClick={handleIncrease}
-                className="rounded-xl border border-white/10 p-3"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
             </div>
-            {selectedSize && (
-              <p className="mt-3 text-sm text-zinc-400">
-                Available in {selectedSize}: {selectedStock}
-              </p>
-            )}
-          </div>
 
-          <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            <button
-              onClick={handleAddToCart}
-              className="rounded-2xl bg-white px-6 py-4 font-semibold text-black hover:bg-zinc-200"
-            >
-              Add to Cart
-            </button>
+            <div className="mt-4 flex flex-wrap gap-3 text-sm">
+              <span className="rounded-full border border-white/10 bg-zinc-950 px-4 py-2 text-zinc-300">
+                Total stock: {totalStock}
+              </span>
+              {totalStock <= 5 && totalStock > 0 && (
+                <span className="rounded-full border border-yellow-500/20 bg-yellow-500/10 px-4 py-2 text-yellow-300">
+                  Only {totalStock} left
+                </span>
+              )}
+              {totalStock === 0 && (
+                <span className="rounded-full border border-red-500/20 bg-red-500/10 px-4 py-2 text-red-300">
+                  Out of stock
+                </span>
+              )}
+            </div>
 
-            <Link
-              href="/checkout"
-              className="rounded-2xl border border-white/20 px-6 py-4 text-center font-semibold text-white hover:bg-white hover:text-black"
-            >
-              Buy Now
-            </Link>
-          </div>
+            <div className="mt-8 rounded-2xl border border-white/10 bg-zinc-950 p-5">
+              <h2 className="text-lg font-semibold">Select Size</h2>
+              <div className="mt-4 flex flex-wrap gap-3">
+                {Object.entries(product.sizes || {}).map(([size, qty]) => (
+                  <button
+                    key={size}
+                    disabled={Number(qty) <= 0}
+                    onClick={() => handleSelectSize(size)}
+                    className={`rounded-xl border px-4 py-3 text-sm font-medium transition ${
+                      selectedSize === size
+                        ? "bg-white text-black"
+                        : "border-white/20 text-white hover:bg-white hover:text-black"
+                    } ${Number(qty) <= 0 ? "cursor-not-allowed opacity-30" : ""}`}
+                  >
+                    {size} ({Number(qty)})
+                  </button>
+                ))}
+              </div>
+            </div>
 
-          <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-zinc-950 p-4">
-              <div className="flex items-center gap-3">
-                <Truck className="h-5 w-5 text-zinc-300" />
-                <div>
-                  <p className="font-medium">Fast Delivery</p>
-                  <p className="text-sm text-zinc-400">Quick shipping across cities</p>
+            <div className="mt-6 rounded-2xl border border-white/10 bg-zinc-950 p-5">
+              <h2 className="text-lg font-semibold">Quantity</h2>
+              <div className="mt-4 flex w-fit items-center gap-3 rounded-2xl border border-white/10 bg-black p-2">
+                <button
+                  type="button"
+                  onClick={handleDecrease}
+                  className="rounded-xl border border-white/10 p-3"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <span className="min-w-[40px] text-center text-lg font-semibold">
+                  {quantity}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleIncrease}
+                  className="rounded-xl border border-white/10 p-3"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+              {selectedSize && (
+                <p className="mt-3 text-sm text-zinc-400">
+                  Available in {selectedSize}: {selectedStock}
+                </p>
+              )}
+            </div>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-white/10 bg-zinc-950 p-4">
+                <div className="flex items-center gap-3">
+                  <Truck className="h-5 w-5 text-zinc-300" />
+                  <div>
+                    <p className="font-medium">Fast Delivery</p>
+                    <p className="text-sm text-zinc-400">Quick shipping across cities</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-zinc-950 p-4">
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className="h-5 w-5 text-zinc-300" />
+                  <div>
+                    <p className="font-medium">Secure Shopping</p>
+                    <p className="text-sm text-zinc-400">Trusted checkout experience</p>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-zinc-950 p-4">
-              <div className="flex items-center gap-3">
-                <ShieldCheck className="h-5 w-5 text-zinc-300" />
-                <div>
-                  <p className="font-medium">Secure Shopping</p>
-                  <p className="text-sm text-zinc-400">Trusted checkout experience</p>
-                </div>
+            {/* Tabs */}
+            <div className="mt-8 rounded-[2rem] border border-white/10 bg-zinc-950 p-5">
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => setActiveTab("description")}
+                  className={`rounded-xl px-4 py-2 text-sm font-medium ${
+                    activeTab === "description"
+                      ? "bg-white text-black"
+                      : "border border-white/10 text-white"
+                  }`}
+                >
+                  Description
+                </button>
+                <button
+                  onClick={() => setActiveTab("highlights")}
+                  className={`rounded-xl px-4 py-2 text-sm font-medium ${
+                    activeTab === "highlights"
+                      ? "bg-white text-black"
+                      : "border border-white/10 text-white"
+                  }`}
+                >
+                  Product Highlights
+                </button>
+                <button
+                  onClick={() => setActiveTab("details")}
+                  className={`rounded-xl px-4 py-2 text-sm font-medium ${
+                    activeTab === "details"
+                      ? "bg-white text-black"
+                      : "border border-white/10 text-white"
+                  }`}
+                >
+                  All Details
+                </button>
               </div>
-            </div>
-          </div>
 
-          <div className="mt-8 rounded-2xl border border-white/10 bg-zinc-950 p-5 text-sm text-zinc-400">
-            <p>✔ Premium dark shopping experience</p>
-            <p className="mt-2">✔ Easy category browsing</p>
-            <p className="mt-2">✔ Real stock connected from admin panel</p>
+              {activeTab === "description" && (
+                <div className="mt-6">
+                  <p className="text-base leading-7 text-zinc-300">
+                    {product.description || "No description available"}
+                  </p>
+                </div>
+              )}
+
+              {activeTab === "highlights" && (
+                <div className="mt-6 grid gap-5 sm:grid-cols-2">
+                  <div className="border-b border-white/10 pb-4">
+                    <p className="text-sm text-zinc-500">Category</p>
+                    <p className="mt-1 text-zinc-300">{product.category || "-"}</p>
+                  </div>
+                  <div className="border-b border-white/10 pb-4">
+                    <p className="text-sm text-zinc-500">Available Sizes</p>
+                    <p className="mt-1 text-zinc-300">{availableSizes || "-"}</p>
+                  </div>
+                  <div className="border-b border-white/10 pb-4">
+                    <p className="text-sm text-zinc-500">Current Stock</p>
+                    <p className="mt-1 text-zinc-300">{totalStock}</p>
+                  </div>
+                  <div className="border-b border-white/10 pb-4">
+                    <p className="text-sm text-zinc-500">Price</p>
+                    <p className="mt-1 text-zinc-300">₹{product.price}</p>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "details" && (
+                <div className="mt-6 overflow-hidden rounded-2xl border border-white/10">
+                  <div className="grid grid-cols-2 border-b border-white/10 bg-black">
+                    <div className="p-4 text-sm text-zinc-500">Product Name</div>
+                    <div className="p-4 text-sm text-zinc-300">{product.name}</div>
+                  </div>
+                  <div className="grid grid-cols-2 border-b border-white/10 bg-zinc-950">
+                    <div className="p-4 text-sm text-zinc-500">Category</div>
+                    <div className="p-4 text-sm text-zinc-300">{product.category}</div>
+                  </div>
+                  <div className="grid grid-cols-2 border-b border-white/10 bg-black">
+                    <div className="p-4 text-sm text-zinc-500">Price</div>
+                    <div className="p-4 text-sm text-zinc-300">₹{product.price}</div>
+                  </div>
+                  <div className="grid grid-cols-2 border-b border-white/10 bg-zinc-950">
+                    <div className="p-4 text-sm text-zinc-500">Stock</div>
+                    <div className="p-4 text-sm text-zinc-300">{totalStock}</div>
+                  </div>
+                  <div className="grid grid-cols-2 bg-black">
+                    <div className="p-4 text-sm text-zinc-500">Sizes</div>
+                    <div className="p-4 text-sm text-zinc-300">{availableSizes || "-"}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-8 rounded-2xl border border-white/10 bg-zinc-950 p-5 text-sm text-zinc-400">
+              <p>✔ Premium dark shopping experience</p>
+              <p className="mt-2">✔ Easy category browsing</p>
+              <p className="mt-2">✔ Real stock connected from admin panel</p>
+            </div>
           </div>
         </div>
       </div>
