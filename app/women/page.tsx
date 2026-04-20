@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { getProducts } from "../components/productDb";
 
+
 function ProductCard({ product }: { product: any }) {
   const slug = String(product.category || "")
     .toLowerCase()

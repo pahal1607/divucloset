@@ -9,6 +9,17 @@ import {
   Clock3,
 } from "lucide-react";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Contact Us",
+  description:
+    "Contact DivuCloset for order help, support, product questions, delivery updates, and WhatsApp assistance.",
+  alternates: {
+    canonical: "/contact-us",
+  },
+};
+
 export default function ContactUsPage() {
   return (
     <div className="min-h-screen bg-black px-4 py-10 text-white sm:px-6 sm:py-12">
