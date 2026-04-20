@@ -1,28 +1,34 @@
 import type { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://divucloset.com";
-
-  const routes = [
-    "",
-    "/women",
-    "/men",
-    "/shoes",
-    "/beauty-products",
-    "/jewelry",
-    "/contact-us",
-    "/cart",
-    "/checkout",
-    "/login",
-    "/search",
-    "/track",
-    "/track-order",
+  return [
+    {
+      url: "https://divucloset.com",
+      lastModified: new Date(),
+    },
+    {
+      url: "https://divucloset.com/women",
+      lastModified: new Date(),
+    },
+    {
+      url: "https://divucloset.com/men",
+      lastModified: new Date(),
+    },
+    {
+      url: "https://divucloset.com/shoes",
+      lastModified: new Date(),
+    },
+    {
+      url: "https://divucloset.com/beauty-products",
+      lastModified: new Date(),
+    },
+    {
+      url: "https://divucloset.com/jewelry",
+      lastModified: new Date(),
+    },
+    {
+      url: "https://divucloset.com/contact-us",
+      lastModified: new Date(),
+    },
   ];
-
-  return routes.map((route) => ({
-    url: `${baseUrl}${route}`,
-    lastModified: new Date(),
-    changeFrequency: route === "" ? "daily" : "weekly",
-    priority: route === "" ? 1 : 0.8,
-  }));
 }
