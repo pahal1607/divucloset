@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import ContactUsClient from "../components/ContactUsClient";
 
 export const metadata: Metadata = {
   title: "Contact Us",
@@ -11,5 +10,14 @@ export const metadata: Metadata = {
 };
 
 export default function ContactUsPage() {
-  return <ContactUsClient />;
+  return (
+    <div className="min-h-screen bg-black px-4 py-10 text-white sm:px-6 sm:py-12">
+      <div className="mx-auto max-w-6xl">
+        <h1 className="text-4xl font-bold">Contact Us</h1>
+        <p className="mt-4 text-zinc-400">
+          Contact DivuCloset for support and order help.
+        </p>
+      </div>
+    </div>
+  );
 }
